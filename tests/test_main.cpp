@@ -1,30 +1,17 @@
 #include <cstdlib>
 #include <iostream>
 
-namespace {
+#include "test_support.hpp"
 
-int failures = 0;
-
-void expect_true(bool condition, const char* expression, int line) {
-    if (condition) {
-        return;
-    }
-
-    std::cerr << "test failure at line " << line << ": " << expression << '\n';
-    ++failures;
-}
-
-}  // namespace
-
-#define EXPECT_TRUE(expression) expect_true((expression), #expression, __LINE__)
+void run_queue_tests();
+void run_type_tests();
 
 int main() {
-    // This smoke test verifies that the test target is built and run by CTest.
-    // Add component tests here as the loader, decoder, and queues are completed.
-    EXPECT_TRUE(sizeof(unsigned char) == 1U);
+    run_type_tests();
+    run_queue_tests();
 
-    if (failures != 0) {
-        std::cerr << failures << " test(s) failed\n";
+    if (test::failure_count != 0) {
+        std::cerr << test::failure_count << " test(s) failed\n";
         return EXIT_FAILURE;
     }
 
