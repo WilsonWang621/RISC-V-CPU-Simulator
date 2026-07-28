@@ -1,6 +1,7 @@
 add_executable(
     riscv_unit_tests
     test_main.cpp
+    unit/decoder_test.cpp
     unit/memory_test.cpp
     unit/queue_test.cpp
     unit/types_test.cpp

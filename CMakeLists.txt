@@ -35,6 +35,7 @@ endif()
 
 add_library(
     riscv_core
+    src/isa/decoder.cpp
     src/memory/image.cpp
 )
 target_link_libraries(riscv_core PUBLIC riscv_project_options)

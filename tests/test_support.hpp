@@ -1,10 +1,20 @@
 #pragma once
 
 #include <iostream>
+#include <type_traits>
 
 namespace test {
 
 inline int failure_count = 0;
+
+template <typename Value>
+void print_value(const Value& value) {
+    if constexpr (std::is_enum_v<Value>) {
+        std::cerr << static_cast<std::underlying_type_t<Value>>(value);
+    } else {
+        std::cerr << value;
+    }
+}
 
 inline void expect_true(
     bool condition,
@@ -37,7 +47,11 @@ void expect_equal(
     std::cerr << file << ':' << line
               << ": expected " << actual_expression
               << " == " << expected_expression
-              << ", but got " << actual << " and " << expected << '\n';
+              << ", but got ";
+    print_value(actual);
+    std::cerr << " and ";
+    print_value(expected);
+    std::cerr << '\n';
     ++failure_count;
 }
 

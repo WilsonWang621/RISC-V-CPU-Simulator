@@ -2,7 +2,7 @@
 
 #include "common/types.hpp"
 
-enum class OP {
+enum class OP { //37 种项目所需指令
     // U-type
     LUI,
     AUIPC,
@@ -18,6 +18,11 @@ enum class OP {
     SRLI,
     SRAI,
     JALR,
+    LB,
+    LH,
+    LW,
+    LBU,
+    LHU,
 
     // R-type
     ADD,
@@ -39,13 +44,6 @@ enum class OP {
     BLTU,
     BGEU,
 
-    // Load
-    LB,
-    LH,
-    LW,
-    LBU,
-    LHU,
-
     // S-type
     SB,
     SH,
@@ -56,7 +54,7 @@ enum class OP {
 
     // 题目约定的停止标记；它不是 RV32I 中独立编码的真实指令。
     HALT,
-    INVALID
+    INVALID  //ecall/ebreak
 };
 
 enum class OperandSource {
@@ -74,7 +72,7 @@ struct DecodedInstruction {
     RegisterIndex rs1 = 0;
     RegisterIndex rs2 = 0;
     Word immediate = 0;
-
+    //执行运算时，两个输入操作数分别从哪里来
     OperandSource lhs_source = OperandSource::Zero;
     OperandSource rhs_source = OperandSource::Zero;
 

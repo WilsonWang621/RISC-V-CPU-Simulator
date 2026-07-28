@@ -6,11 +6,13 @@
 void run_queue_tests();
 void run_memory_tests();
 void run_type_tests();
+void run_decoder_tests();
 
 int main() {
     run_type_tests();
     run_queue_tests();
     run_memory_tests();
+    run_decoder_tests();
 
     if (test::failure_count != 0) {
         std::cerr << test::failure_count << " test(s) failed\n";
