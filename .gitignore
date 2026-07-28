@@ -9,9 +9,9 @@
 # JetBrains IDE (CLion / IDEA) 缓存
 .idea/
 
-./reference/
-./ppt
-./data/
+/reference
+/ppt
+/data
 issue.pdf
 
 /doc
