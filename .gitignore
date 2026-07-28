@@ -12,5 +12,16 @@
 ./reference
 ./ppt
 ./data
-./issue.pdf
+issue.pdf
 
+/doc
+
+# CMake build output
+/build/
+/cmake-build-*/
+/CMakeFiles/
+/CMakeCache.txt
+/CTestTestfile.cmake
+/Makefile
+/Testing/
+/cmake_install.cmake

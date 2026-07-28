@@ -1,0 +1,42 @@
+cmake_minimum_required(VERSION 3.16)
+
+project(
+    riscv_tomasulo_simulator
+    VERSION 0.1.0
+    DESCRIPTION "RV32I Tomasulo CPU simulator"
+    LANGUAGES CXX
+)
+
+option(RISCV_ENABLE_WARNINGS "Enable additional compiler warnings" ON)
+
+add_library(riscv_project_options INTERFACE)
+target_compile_features(riscv_project_options INTERFACE cxx_std_17)
+target_include_directories(
+    riscv_project_options
+    INTERFACE
+        "$<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>"
+)
+
+if(RISCV_ENABLE_WARNINGS)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+        target_compile_options(
+            riscv_project_options
+            INTERFACE
+                -Wall
+                -Wextra
+                -Wpedantic
+                -Wconversion
+                -Wshadow
+        )
+    elseif(MSVC)
+        target_compile_options(riscv_project_options INTERFACE /W4 /permissive-)
+    endif()
+endif()
+
+add_executable(riscv_simulator src/main.cpp)
+target_link_libraries(riscv_simulator PRIVATE riscv_project_options)
+
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
