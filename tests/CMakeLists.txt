@@ -1,11 +1,12 @@
 add_executable(
     riscv_unit_tests
     test_main.cpp
+    unit/memory_test.cpp
     unit/queue_test.cpp
     unit/types_test.cpp
 )
 
-target_link_libraries(riscv_unit_tests PRIVATE riscv_project_options)
+target_link_libraries(riscv_unit_tests PRIVATE riscv_core)
 target_include_directories(
     riscv_unit_tests
     PRIVATE

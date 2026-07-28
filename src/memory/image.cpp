@@ -33,6 +33,7 @@ void MemoryImage::clear(){
 }
 
 ImageLoadResult MemoryImage::load(std::istream& input){
+    clear();
     std::size_t current_address = 0;
     std::string token;
     std::size_t line_number = 0;
@@ -118,6 +119,11 @@ ImageLoadResult MemoryImage::load(std::istream& input){
             current_address++;
         }
     }
+if(input.bad()){
+    return make_result(ImageLoadStatus::kStreamError);
+}
+
+return make_result(ImageLoadStatus::kSuccess);
 }
 
 bool MemoryImage::in_bounds(Address address, size_t width){
@@ -163,7 +169,7 @@ std::optional<Word> MemoryImage::read_word(Address address){
 
 bool MemoryImage::write_byte(Address address, Byte value){
     if(!in_bounds(address, sizeof(Byte))) return false;
-    bytes_[static_cast<Byte>(address)] = value;
+    bytes_[static_cast<size_t>(address)] = value;
     return true;
 }
 

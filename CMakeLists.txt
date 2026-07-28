@@ -33,8 +33,19 @@ if(RISCV_ENABLE_WARNINGS)
     endif()
 endif()
 
+add_library(
+    riscv_core
+    src/memory/image.cpp
+)
+target_link_libraries(riscv_core PUBLIC riscv_project_options)
+target_include_directories(
+    riscv_core
+    PRIVATE
+        "${PROJECT_SOURCE_DIR}/include/memory"
+)
+
 add_executable(riscv_simulator src/main.cpp)
-target_link_libraries(riscv_simulator PRIVATE riscv_project_options)
+target_link_libraries(riscv_simulator PRIVATE riscv_core)
 
 include(CTest)
 if(BUILD_TESTING)

@@ -5,6 +5,7 @@
 #include<stddef.h>
 #include<optional>
 #include<string>
+#include<istream>
 
 enum class ImageLoadStatus {
     kSuccess,
@@ -21,7 +22,7 @@ struct ImageLoadResult {
     std::size_t error_line = 0;
     std::string error_token;
 
-    [[nodiscard]] bool ok() const noexcept {
+    bool ok() {
         return status == ImageLoadStatus::kSuccess;
     }
 };
@@ -33,8 +34,10 @@ class MemoryImage{
     std::optional<Address> highest_loaded_address_;
 
 public:
+    MemoryImage() = default;
+
     void clear();
-    void load();
+    ImageLoadResult load(std::istream& input);
     bool in_bounds(Address address, size_t width);
 
     std::optional<Byte> read_byte(Address address);
@@ -47,4 +50,4 @@ public:
 
     size_t loaded_byte_count();
     std::optional<Address> highest_loaded_address();
-}
+};
