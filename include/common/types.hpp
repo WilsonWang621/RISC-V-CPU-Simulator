@@ -57,7 +57,7 @@ constexpr Word extract_bits(Word value, unsigned high, unsigned low) noexcept {
     return (value >> low) & bit_mask(width);
 }
 
-// 返回值仍是 Word，负数以 RV32I 的 32 位补码形式保存。
+// 按bit_width位的值拓展到最高位
 constexpr Word sign_extend(Word value, unsigned bit_width) noexcept {
     if (bit_width == 0U) {
         return 0U;
@@ -68,11 +68,9 @@ constexpr Word sign_extend(Word value, unsigned bit_width) noexcept {
 
     const Word narrowed = value & bit_mask(bit_width);
     const Word sign_bit = Word{1} << (bit_width - 1U);
-    return (narrowed & sign_bit) != 0U
-        ? narrowed | ~bit_mask(bit_width)
-        : narrowed;
+    return (narrowed & sign_bit) != 0U ? narrowed | ~bit_mask(bit_width) : narrowed;
 }
-
+//bit_width以上高位拓展0
 constexpr Word zero_extend(Word value, unsigned bit_width) noexcept {
     return value & bit_mask(bit_width);
 }
