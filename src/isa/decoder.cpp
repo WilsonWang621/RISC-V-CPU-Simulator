@@ -381,6 +381,30 @@ DecodedInstruction Decoder::decode_J_type(InstructionBits bits){
     return result;
 }
 
+DecodedInstruction Decoder::decode_U_type(InstructionBits bits){
+    const Word opcode = extract_bits(bits, 6, 0);
+     DecodedInstruction result;
+
+     if(opcode == kLuiOpcode){
+        result.op = OP::LUI;
+        result.lhs_source = OperandSource::Zero;
+     }
+     else if(opcode == kAuipcOpcode){
+        result.op = OP::AUIPC;
+        result.lhs_source = OperandSource::ProgramCounter;
+     }else {
+         return DecodedInstruction{};
+     }
+
+     result.rd = decode_register(bits, 11U, 7U);
+     result.immediate = decode_U_immediate(bits);
+
+     result.rhs_source = OperandSource::Immediate;
+     result.writes_rd = write_register(result.rd);
+
+     return result;
+}
+
 Word Decoder::decode_I_immediate(InstructionBits bits){
     const Word immediate = extract_bits(bits, 31U, 20U);
     return sign_extend(immediate, 12);
