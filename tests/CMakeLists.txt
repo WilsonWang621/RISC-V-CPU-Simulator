@@ -15,3 +15,26 @@ target_include_directories(
 )
 
 add_test(NAME riscv_unit_tests COMMAND riscv_unit_tests)
+
+add_executable(
+    riscv_interpreter_data_tests
+    unit/interpreter_data_test.cpp
+)
+
+target_link_libraries(riscv_interpreter_data_tests PRIVATE riscv_core)
+target_compile_definitions(
+    riscv_interpreter_data_tests
+    PRIVATE
+        RISCV_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
+
+add_test(
+    NAME riscv_interpreter_data_tests
+    COMMAND riscv_interpreter_data_tests
+)
+set_tests_properties(
+    riscv_interpreter_data_tests
+    PROPERTIES
+        LABELS "interpreter;data"
+        TIMEOUT 180
+)

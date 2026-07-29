@@ -79,8 +79,8 @@ struct DecodedInstruction {
     bool uses_rs1 = false;
     bool uses_rs2 = false;
     bool writes_rd = false;
-    bool is_load = false;
-    bool is_store = false;
-    bool is_branch = false;
-    bool is_jump = false;
+    bool is_load = false;    //取
+    bool is_store = false;   //存
+    bool is_branch = false;  //if判断PC跳转
+    bool is_jump = false;    //无条件PC跳转
 };
