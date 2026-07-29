@@ -48,7 +48,7 @@ ImageLoadResult Interpreter::load(std::istream &input){
 }
 
 Interpreter::StepResult Interpreter::step(){
-    if(status_ != Status::kReady || status_ != Status::kRunning){
+    if(status_ != Status::kReady && status_ != Status::kRunning){
         return current_result();
     }
 
