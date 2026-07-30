@@ -31,7 +31,7 @@ public:
     void evaluate_commit(const RegisterWrite& write);
 
     // 周期结束时锁存写入，并清除本周期写请求
-    void latch() noexcept;
+    void latch();
 
 private:
     std::array<Word, kRegisterCount> register_;
