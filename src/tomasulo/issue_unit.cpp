@@ -96,7 +96,7 @@ IssueOutputs IssueUnit::evaluate(const IssueInputs &inputs){
     rob_entry.op = instruction.op;
     rob_entry.pc = inputs.packet.pc;
     rob_entry.rd = instruction.rd;
-    rob_entry.writes_rd =  instruction.writes_rd && instruction.writes_rd != RegisterIndex{0};
+    rob_entry.writes_rd =  instruction.writes_rd && instruction.rd != RegisterIndex{0};
     rob_entry.ready = is_halt;      //HALT指令不执行
     rob_entry.predicted_next_pc = inputs.packet.predicted_pc;
     rob_entry.is_branch = instruction.is_branch;
