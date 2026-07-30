@@ -17,6 +17,20 @@ target_include_directories(
 add_test(NAME riscv_unit_tests COMMAND riscv_unit_tests)
 
 add_executable(
+    riscv_issue_unit_tests
+    unit/issue_unit_test.cpp
+)
+
+target_link_libraries(riscv_issue_unit_tests PRIVATE riscv_core)
+target_include_directories(
+    riscv_issue_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(NAME riscv_issue_unit_tests COMMAND riscv_issue_unit_tests)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )

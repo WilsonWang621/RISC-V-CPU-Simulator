@@ -56,11 +56,11 @@ struct IssueOutputs{
     IssueStatus status = IssueStatus::Empty;
     //发布信息
     ROBEntry rob_entry{};
-    RSEntry es_entry{};
+    RSEntry rs_entry{};
     LSQEntry lsq_entry{};
     RenameUpdate rename{};
 
-    bool pop_decode = false;
+    bool pop_decode = false; //issue unit 已经接收发布，上游可以从decode queue中删除它
     bool write_rob = false;
     bool write_rs = false;
     bool write_lsq = false;
@@ -80,7 +80,7 @@ private:
 
     //register状态来源下对应的结果
     static Operand resolve_register(RegisterIndex idx, const SourceState& src, const CDBMsg &msg);
-    
+
     //4种状态来源里面选择一种
     static Operand select_operand(OperandSource src, const Operand& register_operand, Word immediate, Address pc);
 };

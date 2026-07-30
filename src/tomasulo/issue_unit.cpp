@@ -5,10 +5,6 @@ namespace{
     bool is_memory_instruction(const DecodedInstruction& ins){
         return ins.is_load || ins.is_store;
     }
-
-    bool is_control_instruction(const DecodedInstruction& ins){
-        return ins.is_branch || ins.is_jump;
-    }
 }
 
 Operand IssueUnit::ready_operand(Word v){
@@ -143,8 +139,8 @@ IssueOutputs IssueUnit::evaluate(const IssueInputs &inputs){
         outputs.lsq_entry = entry;
         outputs.write_lsq = true;
     }
-
-    if(rob_entry.writes_rd){
+    //Store 读 RAT，但不更新 RAT
+    if(rob_entry.writes_rd){ //store 对应的instruction.writes_rd == false 
         outputs.rename.rd = instruction.rd;
         outputs.rename.tag = inputs.allocated_tag;
         outputs.rename.valid = true;

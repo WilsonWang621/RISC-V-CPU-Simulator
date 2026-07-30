@@ -38,6 +38,7 @@ add_library(
     src/isa/decoder.cpp
     src/memory/image.cpp
     src/reference/interpreter.cpp
+    src/tomasulo/issue_unit.cpp
 )
 target_link_libraries(riscv_core PUBLIC riscv_project_options)
 target_include_directories(
