@@ -36,6 +36,28 @@ target_compile_definitions(
 add_test(NAME riscv_issue_unit_tests COMMAND riscv_issue_unit_tests)
 
 add_executable(
+    riscv_register_file_unit_tests
+    unit/register_file_test.cpp
+)
+
+target_link_libraries(riscv_register_file_unit_tests PRIVATE riscv_core)
+target_include_directories(
+    riscv_register_file_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_compile_definitions(
+    riscv_register_file_unit_tests
+    PRIVATE
+        REGISTER_FILE_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_register_file_unit_tests.log"
+)
+
+add_test(
+    NAME riscv_register_file_unit_tests
+    COMMAND riscv_register_file_unit_tests
+)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )

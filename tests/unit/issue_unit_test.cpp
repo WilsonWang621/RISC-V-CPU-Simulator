@@ -1,66 +1,12 @@
 #include <cstdlib>
-#include <fstream>
 #include <iostream>
-#include <streambuf>
 #include <string_view>
 
+#include "test_log.hpp"
 #include "test_support.hpp"
 #include "tomasulo/issue_unit.hpp"
 
 namespace {
-
-class TeeBuffer : public std::streambuf {
-public:
-    TeeBuffer(std::streambuf* first, std::streambuf* second)
-        : first_(first), second_(second) {}
-
-protected:
-    int overflow(int character) override {
-        if (character == traits_type::eof()) {
-            return traits_type::not_eof(character);
-        }
-        const char value = static_cast<char>(character);
-        const bool first_ok = first_->sputc(value) != traits_type::eof();
-        const bool second_ok = second_->sputc(value) != traits_type::eof();
-        return first_ok && second_ok ? character : traits_type::eof();
-    }
-
-    int sync() override {
-        return first_->pubsync() == 0 && second_->pubsync() == 0 ? 0 : -1;
-    }
-
-private:
-    std::streambuf* first_;
-    std::streambuf* second_;
-};
-
-class TestLog {
-public:
-    TestLog()
-        : file_(ISSUE_TEST_LOG_PATH),
-          stdout_buffer_(std::cout.rdbuf(), file_.rdbuf()),
-          stderr_buffer_(std::cerr.rdbuf(), file_.rdbuf()),
-          original_stdout_(std::cout.rdbuf(&stdout_buffer_)),
-          original_stderr_(std::cerr.rdbuf(&stderr_buffer_)) {}
-
-    ~TestLog() {
-        std::cout.flush();
-        std::cerr.flush();
-        std::cout.rdbuf(original_stdout_);
-        std::cerr.rdbuf(original_stderr_);
-    }
-
-    bool is_open() const {
-        return file_.is_open();
-    }
-
-private:
-    std::ofstream file_;
-    TeeBuffer stdout_buffer_;
-    TeeBuffer stderr_buffer_;
-    std::streambuf* original_stdout_;
-    std::streambuf* original_stderr_;
-};
 
 constexpr RobTag make_tag(RobIndex index, TagGeneration generation = 1U) {
     return RobTag{index, generation, true};
@@ -405,7 +351,7 @@ void test_x0_is_never_a_rename_destination() {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-    TestLog log;
+    test::TestLog log(ISSUE_TEST_LOG_PATH);
     if (!log.is_open()) {
         std::cerr << "failed to open issue test log: "
                   << ISSUE_TEST_LOG_PATH << '\n';
