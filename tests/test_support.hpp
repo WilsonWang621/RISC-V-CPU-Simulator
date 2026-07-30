@@ -11,6 +11,13 @@ template <typename Value>
 void print_value(const Value& value) {
     if constexpr (std::is_enum_v<Value>) {
         std::cerr << static_cast<std::underlying_type_t<Value>>(value);
+    } else if constexpr (std::is_same_v<std::remove_cv_t<Value>, bool>) {
+        std::cerr << std::boolalpha << value;
+    } else if constexpr (
+        std::is_integral_v<Value>
+        && sizeof(Value) == sizeof(char)
+    ) {
+        std::cerr << static_cast<int>(value);
     } else {
         std::cerr << value;
     }
@@ -26,8 +33,25 @@ inline void expect_true(
         return;
     }
 
-    std::cerr << file << ':' << line
-              << ": expected true: " << expression << '\n';
+    std::cerr << file << ':' << line << ": " << expression << '\n'
+              << "  actual:   false\n"
+              << "  expected: true\n";
+    ++failure_count;
+}
+
+inline void expect_false(
+    bool condition,
+    const char* expression,
+    const char* file,
+    int line
+) {
+    if (!condition) {
+        return;
+    }
+
+    std::cerr << file << ':' << line << ": " << expression << '\n'
+              << "  actual:   true\n"
+              << "  expected: false\n";
     ++failure_count;
 }
 
@@ -44,14 +68,13 @@ void expect_equal(
         return;
     }
 
-    std::cerr << file << ':' << line
-              << ": expected " << actual_expression
-              << " == " << expected_expression
-              << ", but got ";
+    std::cerr << file << ':' << line << ": " << actual_expression << '\n'
+              << "  actual:   ";
     print_value(actual);
-    std::cerr << " and ";
+    std::cerr << '\n'
+              << "  expected: ";
     print_value(expected);
-    std::cerr << '\n';
+    std::cerr << " (" << expected_expression << ")\n";
     ++failure_count;
 }
 
@@ -61,7 +84,7 @@ void expect_equal(
     ::test::expect_true((expression), #expression, __FILE__, __LINE__)
 
 #define EXPECT_FALSE(expression) \
-    ::test::expect_true(!(expression), "!(" #expression ")", __FILE__, __LINE__)
+    ::test::expect_false((expression), #expression, __FILE__, __LINE__)
 
 #define EXPECT_EQ(actual, expected) \
     ::test::expect_equal( \

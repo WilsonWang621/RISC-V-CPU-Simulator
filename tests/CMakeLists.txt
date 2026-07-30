@@ -27,6 +27,11 @@ target_include_directories(
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}"
 )
+target_compile_definitions(
+    riscv_issue_unit_tests
+    PRIVATE
+        ISSUE_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_issue_unit_tests.log"
+)
 
 add_test(NAME riscv_issue_unit_tests COMMAND riscv_issue_unit_tests)
 
