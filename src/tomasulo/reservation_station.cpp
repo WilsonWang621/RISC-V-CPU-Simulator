@@ -4,7 +4,7 @@ ReservationStation::ReservationStation(){
     reset();
 }
 
-void ReservationStation::reset() noexcept {
+void ReservationStation::reset() {
     cur_rs_.fill(RSEntry{});
     next_rs_.fill(RSEntry{});
 
@@ -68,6 +68,8 @@ Execute ReservationStation::make_execute(const RSEntry &entry){
     result.pc = entry.pc;
     result.tag = entry.destination;
     result.valid = true;
+
+    return result;
 }
 
 void ReservationStation::wake_operand(Operand& operand, const CDBMsg& cdb){
@@ -117,7 +119,7 @@ RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
     // 最早在下一周期才能被派发
     const size_t selected = select_ready_index();
     if(selected != kInvalidIndex){
-        outputs.dispatch = make_execute(inputs.issue_entry);
+        outputs.dispatch = make_execute(cur_rs_[selected]);
         outputs.dispatch_valid = true;
     }
     
@@ -142,7 +144,6 @@ RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
             next_rs_[free_slot] = new_entry;
             outputs.issue_accepted = true;
         }
-        return outputs;
     }
-
+    return outputs;
 }
