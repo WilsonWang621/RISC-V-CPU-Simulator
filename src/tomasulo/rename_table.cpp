@@ -56,7 +56,7 @@ void RenameTable::evaluate_updates(const RATWrite& issue_write, const RATCommit&
     // 当 Commit 和 Issue 在同周期操作同一个 rd 时，新发射指令的 tag 最终保留在 RAT 中。
     if(issue_write.valid && issue_write.tag.valid && valid_register(issue_write.rd)){
         const std::size_t index = static_cast<std::size_t>(issue_write.rd);
-        next_table_[index] == issue_write.tag;
+        next_table_[index] = issue_write.tag;
     }
     next_table_[0] = RobTag{};
 }

@@ -42,7 +42,7 @@ private:
     std::array<RobTag, kRegisterCount> cur_table_{};
     std::array<RobTag, kRegisterCount> next_table_{};
 
-    void RenameTable::invalidate(std::array<RobTag, kRegisterCount>& table);
+    void invalidate(std::array<RobTag, kRegisterCount>& table);
 
     bool valid_register(RegisterIndex idx);
 };
