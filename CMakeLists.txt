@@ -40,6 +40,7 @@ add_library(
     src/reference/interpreter.cpp
     src/tomasulo/issue_unit.cpp
     src/tomasulo/register_file.cpp
+    src/tomasulo/rename_table.cpp
 )
 target_link_libraries(riscv_core PUBLIC riscv_project_options)
 target_include_directories(
@@ -48,6 +49,7 @@ target_include_directories(
         "${PROJECT_SOURCE_DIR}/include/memory"
         "${PROJECT_SOURCE_DIR}/include/reference"
         "${PROJECT_SOURCE_DIR}/include/tomasulo"
+        "${PROJECT_SOURCE_DIR}/include/common"
 )
 
 add_executable(riscv_simulator src/main.cpp)

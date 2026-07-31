@@ -58,6 +58,29 @@ add_test(
 )
 
 add_executable(
+    riscv_rename_table_unit_tests
+    unit/rename_table_test.cpp
+)
+
+target_link_libraries(riscv_rename_table_unit_tests PRIVATE riscv_core)
+target_include_directories(
+    riscv_rename_table_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+        "${PROJECT_SOURCE_DIR}/include/common"
+)
+target_compile_definitions(
+    riscv_rename_table_unit_tests
+    PRIVATE
+        RENAME_TABLE_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_rename_table_unit_tests.log"
+)
+
+add_test(
+    NAME riscv_rename_table_unit_tests
+    COMMAND riscv_rename_table_unit_tests
+)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )
