@@ -81,6 +81,32 @@ add_test(
 )
 
 add_executable(
+    riscv_reservation_station_unit_tests
+    unit/reservation_station_test.cpp
+)
+
+target_link_libraries(
+    riscv_reservation_station_unit_tests
+    PRIVATE
+        riscv_core
+)
+target_include_directories(
+    riscv_reservation_station_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_compile_definitions(
+    riscv_reservation_station_unit_tests
+    PRIVATE
+        RESERVATION_STATION_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_reservation_station_unit_tests.log"
+)
+
+add_test(
+    NAME riscv_reservation_station_unit_tests
+    COMMAND riscv_reservation_station_unit_tests
+)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )
