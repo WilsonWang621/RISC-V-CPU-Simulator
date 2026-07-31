@@ -6,6 +6,11 @@
 #include "test_support.hpp"
 #include "tomasulo/reservation_station.hpp"
 
+#ifndef RESERVATION_STATION_TEST_LOG_PATH
+#define RESERVATION_STATION_TEST_LOG_PATH \
+    "riscv_reservation_station_unit_tests.log"
+#endif
+
 namespace {
 
 constexpr RobTag make_tag(

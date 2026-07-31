@@ -6,6 +6,10 @@
 #include "test_support.hpp"
 #include "tomasulo/rename_table.hpp"
 
+#ifndef RENAME_TABLE_TEST_LOG_PATH
+#define RENAME_TABLE_TEST_LOG_PATH "riscv_rename_table_unit_tests.log"
+#endif
+
 namespace {
 
 constexpr RobTag make_tag(

@@ -7,6 +7,8 @@ project(
     LANGUAGES CXX
 )
 
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 option(RISCV_ENABLE_WARNINGS "Enable additional compiler warnings" ON)
 
 add_library(riscv_project_options INTERFACE)
