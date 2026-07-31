@@ -84,7 +84,8 @@ FUResult FunctionalUnit::execute_instruction(const Execute& execute){
         case OP::ANDI:
             output.result = lhs & rhs;
             break;
-        case OP::AUIPC: //?
+        case OP::LUI:
+        case OP::AUIPC: 
             output.result = lhs + rhs;
             break;
         case OP::BEQ:
@@ -129,10 +130,11 @@ FUResult FunctionalUnit::execute_instruction(const Execute& execute){
             output.result = lhs | rhs;
             break;
         case OP::SLL:
-        case OP::SLLI:
+        case OP::SLLI:{
             const unsigned amount = static_cast<unsigned>(rhs & kShiftMask);
             output.result = lhs << amount;
             break;
+        }
         case OP::SLTU:
         case OP::SLTIU:
             output.result = lhs < rhs ? Word{1} : Word{0};
@@ -142,15 +144,17 @@ FUResult FunctionalUnit::execute_instruction(const Execute& execute){
             output.result = signed_less_than(lhs, rhs) ? Word{1} : Word{0};
             break;
         case OP::SRA:
-        case OP::SRAI:
+        case OP::SRAI:{
             const unsigned amount = static_cast<unsigned>(rhs & kShiftMask);
             output.result = arithmetic_shift_right(lhs, amount);
             break;
+        } 
         case OP::SRL:
-        case OP::SRLI:
+        case OP::SRLI:{
             const unsigned amount = static_cast<unsigned>(rhs & kShiftMask);
             output.result = lhs >> amount;
             break;
+        }
         case OP::SUB:
             output.result = lhs - rhs;
             break;
