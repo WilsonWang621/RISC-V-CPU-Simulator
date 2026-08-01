@@ -86,7 +86,7 @@ public:
 
     bool empty() const;
     bool full() const;
-    bool size() const;
+    size_t size() const;
 
     //Issue 前获取下一条指令要用的tag
     RobTag next_tag() const;

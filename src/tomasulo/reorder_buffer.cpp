@@ -31,7 +31,7 @@ bool ReorderBuffer::full() const{
     return count_ == ReorderBuffer::kCapacity;
 }
 
-bool ReorderBuffer::size() const{
+size_t ReorderBuffer::size() const{
     return count_;
 }
 TagGeneration ReorderBuffer::following_generation(TagGeneration generation){
