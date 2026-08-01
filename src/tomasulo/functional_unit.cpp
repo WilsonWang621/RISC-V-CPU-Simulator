@@ -78,7 +78,7 @@ FUResult FunctionalUnit::execute_instruction(const Execute& execute){
     switch (execute.op){
         case OP::ADD:
         case OP::ADDI:
-            output.result = lhs + rhs;   //为什么没有immediate?
+            output.result = lhs + rhs;   
             break;
         case OP::AND:
         case OP::ANDI:
@@ -90,6 +90,7 @@ FUResult FunctionalUnit::execute_instruction(const Execute& execute){
             break;
         case OP::BEQ:
             output.branch_taken = lhs == rhs;
+            output.has_control_result = true;
             break;
         case OP::BGE:
             output.branch_taken = signed_greater_equal(lhs, rhs);
