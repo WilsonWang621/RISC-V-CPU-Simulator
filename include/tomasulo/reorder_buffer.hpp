@@ -52,7 +52,7 @@ struct ROBCommit{
 };
 
 struct ROBInputs{
-    ROBEntry tag{};
+    ROBEntry issue_entry{};
     bool issue_valid = false;
 
     // 获得 CDB 仲裁的执行结果。

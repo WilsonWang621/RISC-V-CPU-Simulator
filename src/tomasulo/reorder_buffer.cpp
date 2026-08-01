@@ -92,6 +92,7 @@ ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
     apply_store_completion(inputs.store_completion);
 
     const ROBEntry* head_entry = front();
+    //ROB 队首是一个尚未完成内存写入的 Store，通知 LSQ：这条 Store 已经获得顺序提交授权，可以尝试写内存
     if(head_entry != nullptr && head_entry->is_store && !head_entry->ready){
         outputs.store_request.valid = true;
         outputs.store_request.tag = head_entry->tag;
