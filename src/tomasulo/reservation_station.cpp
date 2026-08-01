@@ -48,14 +48,15 @@ bool ReservationStation::available() const{
 }
 
 std::size_t ReservationStation::select_ready_index(){
-    for(size_t offset = 0u; offset < kCapacity; offset++){
-        const size_t index = (dispatch_cursor_ + offset) % kCapacity;
+    for(size_t offset = 0u; offset < ReservationStation::kCapacity; offset++){
+        const size_t index =
+            (dispatch_cursor_ + offset) % ReservationStation::kCapacity;
         const RSEntry& entry = cur_rs_[index];
         if(entry.busy && entry.lhs.ready && entry.rhs.ready){
             return index;
         } 
     }
-    return kInvalidIndex;
+    return ReservationStation::kInvalidIndex;
 } 
 
 Execute ReservationStation::make_execute(const RSEntry &entry){
@@ -90,14 +91,20 @@ void ReservationStation::wake_entry(RSEntry& entry, const CDBMsg& cdb){
     wake_operand(entry.rhs, cdb);
 };
 
-std::size_t ReservationStation::find_free_index(const std::array<RSEntry, kCapacity>& entries) {
-    for (std::size_t index = 0U; index < kCapacity; ++index) {
+std::size_t ReservationStation::find_free_index(
+    const std::array<RSEntry, ReservationStation::kCapacity>& entries
+) {
+    for (
+        std::size_t index = 0U;
+        index < ReservationStation::kCapacity;
+        ++index
+    ) {
         if (!entries[index].busy) {
             return index;
         }
     }
 
-    return kInvalidIndex;
+    return ReservationStation::kInvalidIndex;
 }
 
 
@@ -118,7 +125,7 @@ RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
     // 本周期被 CDB 唤醒的指令写入 next_，
     // 最早在下一周期才能被派发
     const size_t selected = select_ready_index();
-    if(selected != kInvalidIndex){
+    if(selected != ReservationStation::kInvalidIndex){
         outputs.dispatch = make_execute(cur_rs_[selected]);
         outputs.dispatch_valid = true;
     }
@@ -129,9 +136,10 @@ RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
     }
 
     //只有FU真正接收，才可以释放槽位！！
-    if(selected != kInvalidIndex && inputs.fu_available){
+    if(selected != ReservationStation::kInvalidIndex && inputs.fu_available){
         next_rs_[selected] = RSEntry{};
-        next_dispatch_cursor_ = (selected + 1) % kCapacity;
+        next_dispatch_cursor_ =
+            (selected + 1) % ReservationStation::kCapacity;
     }
 
     if(inputs.issue_valid){
@@ -139,7 +147,7 @@ RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
          
         const size_t free_slot = find_free_index(next_rs_);
 
-        if(free_slot != kInvalidIndex){
+        if(free_slot != ReservationStation::kInvalidIndex){
             new_entry.busy = true;
             next_rs_[free_slot] = new_entry;
             outputs.issue_accepted = true;

@@ -5,8 +5,6 @@
 
 #include"common/types.hpp"
 
-static constexpr std::size_t kRegisterCount = 32U;
-
 struct RegisterWrite{ 
     RegisterIndex rd = 0;
     Word value = 0;
@@ -16,6 +14,8 @@ struct RegisterWrite{
 
 class RegisterFile{
 public:
+    static constexpr std::size_t kRegisterCount = 32U;
+
     RegisterFile();
 
     void reset();

@@ -126,6 +126,25 @@ target_compile_definitions(
 add_test(NAME riscv_alu_unit_tests COMMAND riscv_alu_unit_tests)
 
 add_executable(
+    riscv_rob_unit_tests
+    unit/reorder_buffer_test.cpp
+)
+
+target_link_libraries(riscv_rob_unit_tests PRIVATE riscv_core)
+target_include_directories(
+    riscv_rob_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_compile_definitions(
+    riscv_rob_unit_tests
+    PRIVATE
+        ROB_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_rob_unit_tests.log"
+)
+
+add_test(NAME riscv_rob_unit_tests COMMAND riscv_rob_unit_tests)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )

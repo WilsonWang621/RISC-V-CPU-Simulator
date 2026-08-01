@@ -9,7 +9,9 @@ void RenameTable::reset(){
     invalidate(next_table_);
 }
 
-void RenameTable::invalidate(std::array<RobTag, kRegisterCount>& table){
+void RenameTable::invalidate(
+    std::array<RobTag, RenameTable::kRegisterCount>& table
+){
     table.fill(RobTag{});
 }
 
@@ -23,7 +25,7 @@ RobTag RenameTable::lookup(RegisterIndex idx){
 bool RenameTable::valid_register(RegisterIndex reg){
     const std::size_t index = static_cast<std::size_t>(reg);
     // x0 不允许重命名
-    return index > 0U && index < 32U;
+    return index > 0U && index < RenameTable::kRegisterCount;
 }
 
 void RenameTable::latch(){

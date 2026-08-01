@@ -7,8 +7,6 @@
 #include "isa/instruction.hpp"
 #include "tomasulo/signals.hpp"
 
-static constexpr std::size_t kCapacity = 16U;
-
 // RS 保存值或依赖 tag。busy 表示该固定槽位是否被一条指令占用。
 struct RSEntry {
     OP op = OP::INVALID;
@@ -51,6 +49,8 @@ struct RSOutputs{
 
 class ReservationStation{
 public:
+    static constexpr std::size_t kCapacity = 16U;
+
     ReservationStation();
 
     void reset();

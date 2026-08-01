@@ -45,6 +45,7 @@ add_library(
     src/tomasulo/rename_table.cpp
     src/tomasulo/reservation_station.cpp
     src/tomasulo/functional_unit.cpp
+    src/tomasulo/reorder_buffer.cpp
 )
 target_link_libraries(riscv_core PUBLIC riscv_project_options)
 target_include_directories(

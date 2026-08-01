@@ -11,14 +11,14 @@ void RegisterFile::reset(){
 
 Word RegisterFile::read(RegisterIndex idx){
     const std::size_t pos = static_cast<std::size_t>(idx);
-    if(pos == 0U || pos >= kRegisterCount){
+    if(pos == 0U || pos >= RegisterFile::kRegisterCount){
         return Word{0};
     }
 
     return register_[pos];
 }
 
-const std::array<Word, kRegisterCount>& RegisterFile::values(){
+const std::array<Word, RegisterFile::kRegisterCount>& RegisterFile::values(){
     return register_;
 }
 
@@ -31,7 +31,7 @@ void RegisterFile::evaluate_commit(const RegisterWrite& write){
     const std::size_t position = static_cast<std::size_t>(pending_write_.rd);
 
     // 对 x0 或非法寄存器的写入直接作废
-    if (position == 0U || position >= kRegisterCount) {
+    if (position == 0U || position >= RegisterFile::kRegisterCount) {
         pending_write_.valid = false;
     }
 }

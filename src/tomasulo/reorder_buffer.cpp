@@ -28,7 +28,7 @@ bool ReorderBuffer::empty() const{
 }
 
 bool ReorderBuffer::full() const{
-    return count_ == kCapacity;
+    return count_ == ReorderBuffer::kCapacity;
 }
 
 bool ReorderBuffer::size() const{
@@ -39,12 +39,15 @@ TagGeneration ReorderBuffer::following_generation(TagGeneration generation){
     return next;
 }
 
-bool ReorderBuffer::matching_entry(RobTag tag, const std::array<ROBEntry, kCapacity>& entries) const{
+bool ReorderBuffer::matching_entry(
+    RobTag tag,
+    const std::array<ROBEntry, ReorderBuffer::kCapacity>& entries
+) const{
     if(!tag.valid) return false;
 
     const size_t index = static_cast<size_t>(tag.index);
 
-    if(index > kCapacity) return false;
+    if(index > ReorderBuffer::kCapacity) return false;
 
     return entries[index].valid && entries[index].tag == tag;
 }
@@ -62,7 +65,7 @@ RobTag ReorderBuffer::next_tag() const{
 }
 
 const ROBEntry* ReorderBuffer::front() const{
-    if(empty) return nullptr;
+    if(empty()) return nullptr;
 
     const ROBEntry& entry = cur_[head_];
     //槽位里有还不一定有效
@@ -111,7 +114,8 @@ ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
         }
 
         const size_t old_head = next_head_;
-        const size_t new_head = (old_head + 1U) % kCapacity;
+        const size_t new_head =
+            (old_head + 1U) % ReorderBuffer::kCapacity;
 
         next_[old_head] = ROBEntry{};
         next_head_ = new_head;
@@ -144,7 +148,8 @@ ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
 
                 next_[next_tail_] = entry;
                 next_generations_[next_tail_] = expected_tag.generation;
-                next_tail_ = (next_tail_ + 1U) % kCapacity;
+                next_tail_ =
+                    (next_tail_ + 1U) % ReorderBuffer::kCapacity;
 
                 ++next_count_;
                 outputs.issue_accepted = true;
@@ -155,7 +160,7 @@ ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
     return outputs;
 }
 
-const std::array<ROBEntry, kCapacity>& ReorderBuffer::entries() const{
+const std::array<ROBEntry, ReorderBuffer::kCapacity>& ReorderBuffer::entries() const{
     return cur_;
 }
 

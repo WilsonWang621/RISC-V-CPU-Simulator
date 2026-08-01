@@ -26,7 +26,7 @@ void expect_all_zero(RegisterFile& registers) {
 void test_constructor_initializes_all_registers_to_zero() {
     RegisterFile registers;
 
-    EXPECT_EQ(registers.values().size(), kRegisterCount);
+    EXPECT_EQ(registers.values().size(), RegisterFile::kRegisterCount);
     expect_all_zero(registers);
     EXPECT_EQ(registers.read(RegisterIndex{0U}), Word{0});
     EXPECT_EQ(registers.read(RegisterIndex{1U}), Word{0});

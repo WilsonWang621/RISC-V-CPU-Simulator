@@ -7,7 +7,6 @@
 #include "isa/instruction.hpp"
 #include"./signals.hpp"
 
-constexpr size_t kCapacity = 32u;
 
 // ROB 只保存执行完成、顺序提交和分支恢复所需的信息。
 // RS/LSQ 中的操作数等待状态不应复制到这里。
@@ -78,6 +77,8 @@ struct ROBOutputs{
 
 struct ReorderBuffer{
 public:
+    static constexpr size_t kCapacity = 32u;
+
     ReorderBuffer();
 
     void reset();

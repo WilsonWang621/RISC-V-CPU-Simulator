@@ -5,7 +5,6 @@
 
 #include"types.hpp"
 
-static constexpr std::size_t kRegisterCount = 32U; 
 
 struct RATWrite{
     RegisterIndex rd = 0;
@@ -39,6 +38,7 @@ public:
     // 因此同周期写同一 rd 时，年轻的 Issue 映射最终保留下来
     void evaluate_updates(const RATWrite& issue_write, const RATCommit& commit, bool flush);
 private:
+    static constexpr std::size_t kRegisterCount = 32U;
     std::array<RobTag, kRegisterCount> cur_table_{};
     std::array<RobTag, kRegisterCount> next_table_{};
 
@@ -46,5 +46,4 @@ private:
 
     bool valid_register(RegisterIndex idx);
 };
-
 

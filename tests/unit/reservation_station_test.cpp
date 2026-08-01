@@ -130,7 +130,11 @@ void test_invalid_issue_does_not_allocate_slot() {
 void test_capacity_and_backpressure() {
     ReservationStation station;
 
-    for (std::size_t index = 0U; index < kCapacity; ++index) {
+    for (
+        std::size_t index = 0U;
+        index < ReservationStation::kCapacity;
+        ++index
+    ) {
         insert_entry(
             station,
             make_entry(make_tag(static_cast<RobIndex>(index)))
@@ -140,7 +144,7 @@ void test_capacity_and_backpressure() {
     EXPECT_FALSE(station.empty());
     EXPECT_TRUE(station.full());
     EXPECT_FALSE(station.available());
-    EXPECT_EQ(station.size(), kCapacity);
+    EXPECT_EQ(station.size(), ReservationStation::kCapacity);
 
     const RSOutputs rejected = station.evaluate(
         issue_input(make_entry(make_tag(99U)))
@@ -149,7 +153,7 @@ void test_capacity_and_backpressure() {
 
     EXPECT_FALSE(rejected.issue_accepted);
     EXPECT_TRUE(station.full());
-    EXPECT_EQ(station.size(), kCapacity);
+    EXPECT_EQ(station.size(), ReservationStation::kCapacity);
 }
 
 void test_ready_entry_uses_fu_valid_ready_handshake() {
