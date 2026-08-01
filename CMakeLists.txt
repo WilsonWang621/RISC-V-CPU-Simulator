@@ -57,8 +57,13 @@ target_include_directories(
         "${PROJECT_SOURCE_DIR}/include/common"
 )
 
-add_executable(riscv_simulator src/main.cpp)
-target_link_libraries(riscv_simulator PRIVATE riscv_core)
+add_executable(code src/main.cpp)
+target_link_libraries(code PRIVATE riscv_core)
+set_target_properties(
+    code
+    PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}"
+)
 
 include(CTest)
 if(BUILD_TESTING)
