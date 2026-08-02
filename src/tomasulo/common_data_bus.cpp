@@ -10,7 +10,7 @@ void CommonDataBus::reset(){
 }
 
 void CommonDataBus::latch(){
-    next_prefer_load = prefer_load;
+    prefer_load = next_prefer_load;
 }
 
 bool CommonDataBus::valid_candidate(const FUResult& result){
@@ -21,7 +21,7 @@ bool CommonDataBus::valid_candidate(const FUResult& result){
     return true;
 }
 
-void select_integer(const FUResult& result, CDBOutputs& outputs){
+void CommonDataBus::select_integer(const FUResult& result, CDBOutputs& outputs){
     outputs.source = CDBSource::IntegerUnit;
     outputs.integer_granted = true;
     
@@ -31,7 +31,7 @@ void select_integer(const FUResult& result, CDBOutputs& outputs){
     outputs.broadcast.valid = true;
 }
 
-void select_load(const FUResult& result, CDBOutputs& outputs){
+void CommonDataBus::select_load(const FUResult& result, CDBOutputs& outputs){
     outputs.source = CDBSource::LoadUnit;
     outputs.load_granted = true;
 
