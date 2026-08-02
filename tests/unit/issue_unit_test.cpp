@@ -157,6 +157,8 @@ void test_alu_issue_builds_rob_rs_and_rename_entries() {
     EXPECT_EQ(outputs.rob_entry.rd, RegisterIndex{5U});
     EXPECT_TRUE(outputs.rob_entry.writes_rd);
     EXPECT_FALSE(outputs.rob_entry.ready);
+    EXPECT_FALSE(outputs.rob_entry.branch_taken);
+    EXPECT_FALSE(outputs.rob_entry.is_jump);
     EXPECT_EQ(
         outputs.rob_entry.predicted_next_pc,
         inputs.packet.predicted_pc
@@ -313,8 +315,25 @@ void test_branch_metadata_and_halt() {
         issue.evaluate(make_available_inputs(branch));
     EXPECT_TRUE(branch_outputs.write_rs);
     EXPECT_TRUE(branch_outputs.rob_entry.is_branch);
+    EXPECT_FALSE(branch_outputs.rob_entry.is_jump);
+    EXPECT_FALSE(branch_outputs.rob_entry.branch_taken);
     EXPECT_EQ(branch_outputs.rob_entry.predicted_next_pc, 0x1004U);
     EXPECT_FALSE(branch_outputs.rename.valid);
+
+    DecodedInstruction jump{};
+    jump.op = OP::JAL;
+    jump.rd = 1U;
+    jump.immediate = 0x20U;
+    jump.lhs_source = OperandSource::ProgramCounter;
+    jump.rhs_source = OperandSource::Immediate;
+    jump.writes_rd = true;
+    jump.is_jump = true;
+    const IssueOutputs jump_outputs =
+        issue.evaluate(make_available_inputs(jump));
+    EXPECT_TRUE(jump_outputs.write_rs);
+    EXPECT_FALSE(jump_outputs.rob_entry.is_branch);
+    EXPECT_TRUE(jump_outputs.rob_entry.is_jump);
+    EXPECT_FALSE(jump_outputs.rob_entry.branch_taken);
 
     DecodedInstruction halt{};
     halt.op = OP::HALT;

@@ -99,8 +99,10 @@ IssueOutputs IssueUnit::evaluate(const IssueInputs &inputs){
     rob_entry.writes_rd =  instruction.writes_rd && instruction.rd != RegisterIndex{0};
     rob_entry.ready = is_halt;      //HALT指令不执行
     rob_entry.predicted_next_pc = inputs.packet.predicted_pc;
+    rob_entry.branch_taken = false; //控制指令尚未执行，实际方向未知
     rob_entry.is_branch = instruction.is_branch;
     rob_entry.is_store = instruction.is_store;
+    rob_entry.is_jump = instruction.is_jump;
     rob_entry.valid = true;
 
     outputs.rob_entry = rob_entry;
