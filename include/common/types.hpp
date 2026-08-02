@@ -13,7 +13,7 @@ using CycleCount = std::uint64_t;
 using RobIndex = std::uint32_t;
 using TagGeneration = std::uint32_t;
 
-// ROB 槽位会循环复用。index 定位槽位，generation 区分同一槽位的新旧指令，
+// ROB 槽位会循环复用。index 定位槽位，generation 区分同一槽位的新旧指令（第几次被使用）
 // 防止延迟到达的旧广播误命中新指令。
 struct RobTag {
     RobIndex index = 0;
