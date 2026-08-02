@@ -145,6 +145,25 @@ target_compile_definitions(
 add_test(NAME riscv_rob_unit_tests COMMAND riscv_rob_unit_tests)
 
 add_executable(
+    riscv_cdb_unit_tests
+    unit/common_data_bus_test.cpp
+)
+
+target_link_libraries(riscv_cdb_unit_tests PRIVATE riscv_core)
+target_include_directories(
+    riscv_cdb_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_compile_definitions(
+    riscv_cdb_unit_tests
+    PRIVATE
+        CDB_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_cdb_unit_tests.log"
+)
+
+add_test(NAME riscv_cdb_unit_tests COMMAND riscv_cdb_unit_tests)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )
