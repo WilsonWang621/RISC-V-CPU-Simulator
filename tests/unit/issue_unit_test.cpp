@@ -259,7 +259,7 @@ void test_load_and_store_issue_to_lsq() {
     EXPECT_TRUE(load_outputs.write_rob);
     EXPECT_TRUE(load_outputs.write_lsq);
     EXPECT_FALSE(load_outputs.write_rs);
-    EXPECT_EQ(load_outputs.lsq_entry.type, LSType::LOAD);
+    EXPECT_EQ(load_outputs.lsq_entry.type, MemoryAccessType::LOAD);
     EXPECT_EQ(load_outputs.lsq_entry.op, OP::LW);
     expect_tag(
         load_outputs.lsq_entry.destination,
@@ -292,7 +292,7 @@ void test_load_and_store_issue_to_lsq() {
     EXPECT_TRUE(store_outputs.write_rob);
     EXPECT_TRUE(store_outputs.write_lsq);
     EXPECT_FALSE(store_outputs.write_rs);
-    EXPECT_EQ(store_outputs.lsq_entry.type, LSType::STORE);
+    EXPECT_EQ(store_outputs.lsq_entry.type, MemoryAccessType::STORE);
     expect_ready_operand(store_outputs.lsq_entry.base, 0x3000U);
     expect_ready_operand(store_outputs.lsq_entry.store_data, 0x55667788U);
     EXPECT_TRUE(store_outputs.rob_entry.is_store);
