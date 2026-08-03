@@ -164,6 +164,25 @@ target_compile_definitions(
 add_test(NAME riscv_cdb_unit_tests COMMAND riscv_cdb_unit_tests)
 
 add_executable(
+    riscv_lsq_unit_tests
+    unit/load_store_queue_test.cpp
+)
+
+target_link_libraries(riscv_lsq_unit_tests PRIVATE riscv_core)
+target_include_directories(
+    riscv_lsq_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_compile_definitions(
+    riscv_lsq_unit_tests
+    PRIVATE
+        LSQ_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_lsq_unit_tests.log"
+)
+
+add_test(NAME riscv_lsq_unit_tests COMMAND riscv_lsq_unit_tests)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )
