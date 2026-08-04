@@ -40,6 +40,7 @@ add_library(
     src/isa/decoder.cpp
     src/memory/image.cpp
     src/reference/interpreter.cpp
+    src/tomasulo/cpu.cpp
     src/tomasulo/issue_unit.cpp
     src/tomasulo/register_file.cpp
     src/tomasulo/rename_table.cpp
@@ -57,6 +58,7 @@ target_include_directories(
         "${PROJECT_SOURCE_DIR}/include/reference"
         "${PROJECT_SOURCE_DIR}/include/tomasulo"
         "${PROJECT_SOURCE_DIR}/include/common"
+        "${PROJECT_SOURCE_DIR}/include/isa"
 )
 
 add_executable(code src/main.cpp)
