@@ -183,6 +183,25 @@ target_compile_definitions(
 add_test(NAME riscv_lsq_unit_tests COMMAND riscv_lsq_unit_tests)
 
 add_executable(
+    riscv_memory_unit_tests
+    unit/memory_unit_test.cpp
+)
+
+target_link_libraries(riscv_memory_unit_tests PRIVATE riscv_core)
+target_include_directories(
+    riscv_memory_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_compile_definitions(
+    riscv_memory_unit_tests
+    PRIVATE
+        MEMORY_UNIT_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_memory_unit_tests.log"
+)
+
+add_test(NAME riscv_memory_unit_tests COMMAND riscv_memory_unit_tests)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )
