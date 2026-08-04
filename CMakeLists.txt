@@ -35,21 +35,14 @@ if(RISCV_ENABLE_WARNINGS)
     endif()
 endif()
 
-add_library(
-    riscv_core
-    src/isa/decoder.cpp
-    src/memory/image.cpp
-    src/reference/interpreter.cpp
-    src/tomasulo/cpu.cpp
-    src/tomasulo/issue_unit.cpp
-    src/tomasulo/register_file.cpp
-    src/tomasulo/rename_table.cpp
-    src/tomasulo/reservation_station.cpp
-    src/tomasulo/functional_unit.cpp
-    src/tomasulo/reorder_buffer.cpp
-    src/tomasulo/common_data_bus.cpp
-    src/tomasulo/load_store_queue.cpp
+file(
+    GLOB_RECURSE RISCV_CORE_SOURCES
+    CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/src/*.cpp"
 )
+list(REMOVE_ITEM RISCV_CORE_SOURCES "${PROJECT_SOURCE_DIR}/src/main.cpp")
+
+add_library(riscv_core ${RISCV_CORE_SOURCES})
 target_link_libraries(riscv_core PUBLIC riscv_project_options)
 target_include_directories(
     riscv_core

@@ -1,12 +1,8 @@
 CXX ?= g++
-CPPFLAGS := -Iinclude -Iinclude/memory -Iinclude/reference
+CPPFLAGS := -Iinclude -Iinclude/memory -Iinclude/reference -Iinclude/tomasulo -Iinclude/common -Iinclude/isa
 CXXFLAGS ?= -std=c++17 -O2 -Wall -Wextra -Wpedantic
 
-SOURCES := \
-	src/main.cpp \
-	src/isa/decoder.cpp \
-	src/memory/image.cpp \
-	src/reference/interpreter.cpp
+SOURCES := $(shell find src -type f -name '*.cpp' -print)
 
 .PHONY: all clean
 
