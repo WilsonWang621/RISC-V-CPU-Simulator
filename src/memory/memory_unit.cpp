@@ -17,10 +17,6 @@ void MemoryUnit::reset(){
     next_store_write_ = PendingStoreWrite{};
 }
 
-void MemoryUnit::latch(){
-
-}
-
 void MemoryUnit::clear(){
     memory_.clear();
     reset();
@@ -55,7 +51,7 @@ InstructionFetchResponse MemoryUnit::fetch(const InstructionFetchRequest& reques
 }
 
 bool MemoryUnit::data_port_available() const{
-    return current_transaction_.valid;
+    return !current_transaction_.valid;
 }
 
 DataMemoryResponse MemoryUnit::data_response() const{
@@ -213,7 +209,7 @@ bool MemoryUnit::apply_store_write(const PendingStoreWrite& write){
     return false;
 }
 
-void MemoryUnit::latch() noexcept {
+void MemoryUnit::latch(){
     // Store 在时钟边沿真正修改内存。
     if (next_store_write_.valid) {
         const bool written = apply_store_write(next_store_write_);
