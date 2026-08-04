@@ -22,7 +22,7 @@ struct ImageLoadResult {
     std::size_t error_line = 0;
     std::string error_token;
 
-    bool ok() {
+    bool ok() const{
         return status == ImageLoadStatus::kSuccess;
     }
 };
