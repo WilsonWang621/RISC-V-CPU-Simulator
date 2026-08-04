@@ -127,7 +127,9 @@ IssueOutputs IssueUnit::evaluate(const IssueInputs &inputs){
 
     if(need_lsq){
         LSQEntry entry{};
-        entry.type = instruction.is_load ? LSType::LOAD : LSType::STORE;
+        entry.type = instruction.is_load
+            ? MemoryAccessType::LOAD
+            : MemoryAccessType::STORE;
         entry.op = instruction.op;
         entry.destination = inputs.allocated_tag;
         entry.base = rs1;

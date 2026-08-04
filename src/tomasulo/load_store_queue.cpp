@@ -56,7 +56,7 @@ void LoadStoreQueue::wake_entry(LSQEntry& entry, const CDBMsg& cdb){
 
     wake_operand(entry.base, cdb);
 
-    if(entry.type == LSType::STORE){
+    if(entry.type == MemoryAccessType::STORE){
         wake_operand(entry.store_data, cdb);
     }
 }
@@ -69,7 +69,7 @@ bool LoadStoreQueue::matching_response(const LSQEntry& entry, const DataMemoryRe
         return false;
     }
 
-    const bool entry_is_store = entry.type == LSType::STORE;
+    const bool entry_is_store = entry.type == MemoryAccessType::STORE;
 
     return entry_is_store == response.is_store;
 }
@@ -141,13 +141,13 @@ void LoadStoreQueue::remove_next_head(){
 
 DataMemoryRequest LoadStoreQueue::make_memory_request(const LSQEntry& entry){
     DataMemoryRequest request;
-    request.type = entry.type == LSType::LOAD ? LSType::LOAD : LSType::STORE;
+    request.type = entry.type;
     request.width = memory_width(entry.op);
     request.address = entry.address;
     request.tag = entry.destination;
     request.valid = true;
-    if(entry.type == LSType::STORE){
-        request.type == entry.store_data.value;
+    if(entry.type == MemoryAccessType::STORE){
+        request.value = entry.store_data.value;
     }
     return request;
 }
@@ -155,13 +155,12 @@ DataMemoryRequest LoadStoreQueue::make_memory_request(const LSQEntry& entry){
 LSQOutputs LoadStoreQueue::evaluate(const LSQInputs& inputs){
     LSQOutputs output{};
 
-    cur_ = next_;
+    next_ = cur_;
     next_head_ = head_;
     next_tail_ = tail_;
     next_count_ = count_;
     next_load_result_ = cur_load_result_;
 
-    if(!inputs.issue_valid || !inputs.issue_entry.valid) return output;
 
     if(inputs.flush){
         next_.fill(LSQEntry{});
@@ -177,7 +176,7 @@ LSQOutputs LoadStoreQueue::evaluate(const LSQInputs& inputs){
         next_load_result_ = FUResult{};
     }
 
-    for(LSQEntry& entry : cur_){
+    for(LSQEntry& entry : next_){
         wake_entry(entry, inputs.cdb);
     }
     
@@ -192,14 +191,14 @@ LSQOutputs LoadStoreQueue::evaluate(const LSQInputs& inputs){
             if(!inputs.memory_response.success){
                 output.memory_error = true;
             }
-            else if(current_head.type == LSType::LOAD){
+            else if(current_head.type == MemoryAccessType::LOAD){
                 // 设计保证发送下一条 Load 请求前，
                 // 旧 Load 结果缓冲已经腾空。
                 assert(!next_load_result_.valid);
 
                 FUResult result;
                 result.tag = current_head.destination;
-                result.result = extend_load_result(inputs.issue_entry.op, inputs.memory_response.value);
+                result.result = extend_load_result(current_head.op, inputs.memory_response.value);
                 result.valid = true;
 
                 next_load_result_ = result;
@@ -223,7 +222,7 @@ LSQOutputs LoadStoreQueue::evaluate(const LSQInputs& inputs){
         const LSQEntry& current_head = cur_[head_];
         if(current_head.valid && !current_head.request_sent && current_head.address_ready && inputs.memory_available){
             bool may_send = false;
-            if(current_head.type == LSType::LOAD){
+            if(current_head.type == MemoryAccessType::LOAD){
                 //Load结果缓冲必须可用
                 may_send = !cur_load_result_.valid || inputs.load_result_granted;
             }else{
@@ -240,7 +239,7 @@ LSQOutputs LoadStoreQueue::evaluate(const LSQInputs& inputs){
     * available() 使用 current_，所以当前满时，即使本周期
     * 正好移除队首，也保守地不接受新条目。
     */
-    if (inputs.issue_valid && !full()) {
+    if (inputs.issue_valid && !full() && inputs.issue_entry.valid) {
         LSQEntry entry = inputs.issue_entry;
 
         entry.valid = true;
@@ -255,5 +254,5 @@ LSQOutputs LoadStoreQueue::evaluate(const LSQInputs& inputs){
     // 为 CDB 唤醒或本周期新插入的条目计算地址。
     update_addresses();
 
-    return outputs;
+    return output;
 }

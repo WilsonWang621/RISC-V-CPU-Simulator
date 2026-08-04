@@ -9,15 +9,10 @@
 #include"memory/memory_unit.hpp"
 #include"tomasulo/reorder_buffer.hpp"
 
-enum class LSType {
-    LOAD,
-    STORE
-};
-
 // address == 0 是合法地址，因此必须使用 address_ready 单独表示地址是否就绪。
 // Store 的数据只有到达 ROB 队首后才允许通过 Memory Unit 修改内存。
 struct LSQEntry {
-    LSType type = LSType::LOAD;
+    MemoryAccessType type = MemoryAccessType::LOAD;
     OP op = OP::INVALID;
     RobTag destination{};
 

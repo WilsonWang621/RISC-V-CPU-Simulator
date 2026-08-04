@@ -1,5 +1,12 @@
 #pragma once
 
+#include "common/types.hpp"
+
+enum class MemoryAccessType {
+    LOAD,
+    STORE
+};
+
 enum class MemoryWidth {
     BYTE,
     HALF,
@@ -7,7 +14,7 @@ enum class MemoryWidth {
 };
 
 struct DataMemoryRequest{
-    LSType type = LSType::LOAD;
+    MemoryAccessType type = MemoryAccessType::LOAD;
     MemoryWidth width = MemoryWidth::WORD;
 
     Address address = 0U;
