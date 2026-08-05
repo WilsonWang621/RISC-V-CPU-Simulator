@@ -224,6 +224,26 @@ add_test(
 )
 
 add_executable(
+    riscv_cpu_unit_tests
+    unit/cpu_test.cpp
+)
+
+target_link_libraries(riscv_cpu_unit_tests PRIVATE riscv_core)
+target_include_directories(
+    riscv_cpu_unit_tests
+    PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+target_compile_definitions(
+    riscv_cpu_unit_tests
+    PRIVATE
+        CPU_TEST_LOG_PATH="${CMAKE_CURRENT_BINARY_DIR}/riscv_cpu_unit_tests.log"
+)
+
+add_test(NAME riscv_cpu_unit_tests COMMAND riscv_cpu_unit_tests)
+set_tests_properties(riscv_cpu_unit_tests PROPERTIES TIMEOUT 15)
+
+add_executable(
     riscv_interpreter_data_tests
     unit/interpreter_data_test.cpp
 )

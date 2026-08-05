@@ -293,7 +293,11 @@ void CPU::cycle(){
     const bool fu_accepted = functional_unit_.evaluate(execute, rob_preview.flush, cdb_outputs.integer_granted);
 
 
-    if(rs_outputs.dispatch_valid && rs_outputs.dispatch_valid && !rob_preview.flush){
+    if (
+        rs_outputs.dispatch_valid
+        && rs_inputs.fu_available
+        && !rob_preview.flush
+    ) {
         assert(fu_accepted);
     }
 
@@ -367,11 +371,17 @@ void CPU::cycle(){
         ++committed_count_;
     }
 
-    if (fetch_error) {
+    // 取指或译码错误可能来自尚未确认的推测路径。ROB 非空时
+    // 保持当前 PC，让更老的指令先完成；若随后发生 Flush，错误
+    // 路径会被重定向。只有 ROB 已空时才能确认错误属于正确路径。
+    if (fetch_error && rob_.empty()) {
         next_status = Status::FetchOutOfBound;
     }
 
-    if (issue_outputs.status == IssueStatus::InvalidInstruction) {
+    if (
+        issue_outputs.status == IssueStatus::InvalidInstruction
+        && rob_.empty()
+    ) {
         next_status = Status::InvalidInstruction;
     }
 
