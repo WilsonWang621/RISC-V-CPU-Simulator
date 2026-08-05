@@ -18,7 +18,7 @@ Word RegisterFile::read(RegisterIndex idx) const{
     return register_[pos];
 }
 
-const std::array<Word, RegisterFile::kRegisterCount>& RegisterFile::values(){
+const std::array<Word, RegisterFile::kRegisterCount>& RegisterFile::values() const{
     return register_;
 }
 

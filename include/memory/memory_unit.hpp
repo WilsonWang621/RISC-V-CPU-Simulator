@@ -66,7 +66,7 @@ public:
     // 装载一个新程序，同时清空所有未完成访存
     ImageLoadResult load(std::istream& input);
 
-    InstructionFetchResponse fetch(const InstructionFetchRequest& request);
+    InstructionFetchResponse fetch(const InstructionFetchRequest& request) const;
 
     // 当前数据端口能否接受新请求
     bool data_port_available() const;
@@ -104,7 +104,7 @@ private:
 
     static std::size_t width_in_bytes(MemoryWidth width);
 
-    Word read_data(Address address, MemoryWidth width, bool& success);
+    Word read_data(Address address, MemoryWidth width, bool& success) const;
 
     bool schedule_store(const DataMemoryRequest& request);
 

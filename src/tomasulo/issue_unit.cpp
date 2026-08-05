@@ -52,7 +52,7 @@ Operand IssueUnit::select_operand(OperandSource src, const Operand& register_ope
     return ready_operand(Word{0});
 }
 
-IssueOutputs IssueUnit::evaluate(const IssueInputs &inputs){
+IssueOutputs IssueUnit::evaluate(const IssueInputs &inputs) const{
     IssueOutputs outputs{};
     //先检验输入有效性
     if(inputs.packet.valid ==  false){

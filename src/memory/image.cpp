@@ -126,7 +126,7 @@ if(input.bad()){
 return make_result(ImageLoadStatus::kSuccess);
 }
 
-bool MemoryImage::in_bounds(Address address, size_t width){
+bool MemoryImage::in_bounds(Address address, size_t width) const{
     const size_t start = static_cast<size_t>(address);
 
     if(width > kMemorySize) return false;
@@ -134,14 +134,14 @@ bool MemoryImage::in_bounds(Address address, size_t width){
     return start <= kMemorySize - width;
 }
 
-std::optional<Byte> MemoryImage::read_byte(Address address){
+std::optional<Byte> MemoryImage::read_byte(Address address) const{
     if(!in_bounds(address, sizeof(Byte))){
         return std::nullopt;
     }
     return bytes_[static_cast<size_t>(address)];
 }
 
-std::optional<HalfWord> MemoryImage::read_half(Address address){
+std::optional<HalfWord> MemoryImage::read_half(Address address) const{
     if(!in_bounds(address, sizeof(HalfWord))){
         return std::nullopt;
     }
@@ -152,7 +152,7 @@ std::optional<HalfWord> MemoryImage::read_half(Address address){
     return static_cast<HalfWord>(low | static_cast<HalfWord>(high << 8U));
 }
 
-std::optional<Word> MemoryImage::read_word(Address address){
+std::optional<Word> MemoryImage::read_word(Address address) const{
     if (!in_bounds(address, sizeof(Word))) {
         return std::nullopt;
     }    
@@ -179,8 +179,8 @@ bool MemoryImage::write_half(Address address, HalfWord value){
     }
 
     const size_t start = static_cast<size_t>(address);
-    bytes_[start] = static_cast<size_t>(value & 0xffU);
-    bytes_[start + 1] = static_cast<size_t>((value >> 8u) & 0xffU);
+    bytes_[start] = static_cast<Byte>(value & 0xffU);
+    bytes_[start + 1] = static_cast<Byte>((value >> 8U) & 0xffU);
 
     return true;
 }
@@ -203,10 +203,10 @@ bool MemoryImage::write_word(Address address, Word value){
     return true;
 }
 
-std::size_t MemoryImage::loaded_byte_count() {
+std::size_t MemoryImage::loaded_byte_count() const {
     return load_byte_count_;
 }
 
-std::optional<Address> MemoryImage::highest_loaded_address(){
+std::optional<Address> MemoryImage::highest_loaded_address() const{
     return highest_loaded_address_;
 }

@@ -27,7 +27,7 @@ ImageLoadResult MemoryUnit::load(std::istream& inputs){
     return memory_.load(inputs);
 }
 
-InstructionFetchResponse MemoryUnit::fetch(const InstructionFetchRequest& request){
+InstructionFetchResponse MemoryUnit::fetch(const InstructionFetchRequest& request) const{
     InstructionFetchResponse response{};
 
     if (!request.valid) {
@@ -73,7 +73,7 @@ std::size_t MemoryUnit::width_in_bytes(MemoryWidth width) {
     return 0U;
 }
 
-Word MemoryUnit::read_data(Address address, MemoryWidth width, bool& success){
+Word MemoryUnit::read_data(Address address, MemoryWidth width, bool& success) const{
     success = false;
 
     switch (width) {

@@ -109,7 +109,7 @@ Address CPU::predicted_next_pc(const DecodedInstruction& instruction, Address pc
     return sequential;
 }
 
-DecodePacket CPU::fetchAndDecoded(bool& fetch_error){
+DecodePacket CPU::fetchAndDecoded(bool& fetch_error) const{
     fetch_error = false;
 
     InstructionFetchRequest request{};
@@ -133,7 +133,7 @@ DecodePacket CPU::fetchAndDecoded(bool& fetch_error){
     return packet;
 }
 
-SourceState CPU::source_state(RegisterIndex reg){
+SourceState CPU::source_state(RegisterIndex reg) const{
     SourceState source{};
     
     if (reg == RegisterIndex{0}) {
@@ -289,7 +289,7 @@ void CPU::cycle(){
     * 8. FU evaluate。
     */
     
-    Execute execute = rs_outputs.dispatch;
+    const Execute execute = rs_outputs.dispatch;
     const bool fu_accepted = functional_unit_.evaluate(execute, rob_preview.flush, cdb_outputs.integer_granted);
 
 

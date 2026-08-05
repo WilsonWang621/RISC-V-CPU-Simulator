@@ -73,7 +73,7 @@ struct IssueOutputs{
 
 class IssueUnit{ 
 public:
-    IssueOutputs evaluate(const IssueInputs& inputs);
+    IssueOutputs evaluate(const IssueInputs& inputs) const;
 
 private:
     static Operand ready_operand(Word value);

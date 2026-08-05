@@ -94,13 +94,13 @@ private:
 
     Word exit_code_ = 0;
 
-    SourceState source_state(RegisterIndex reg);
+    SourceState source_state(RegisterIndex reg) const;
 
     Address predicted_next_pc(const DecodedInstruction& instruction, Address pc, bool& predicted_taken) const;
 
     ROBPreview preview_rob() const;
 
-    DecodePacket fetchAndDecoded(bool &fetch_error);
+    DecodePacket fetchAndDecoded(bool &fetch_error) const;
 
     void latch_all();
 };

@@ -24,7 +24,7 @@ public:
     // x0 和非法寄存器编号都返回 0。
     Word read(RegisterIndex idx) const;
 
-    const std::array<Word, kRegisterCount>& values();
+    const std::array<Word, kRegisterCount>& values() const;
 
     // 记录本周期 ROB Commit 提供的写请求。
     // 该函数不会立即改变 read() 返回的值。

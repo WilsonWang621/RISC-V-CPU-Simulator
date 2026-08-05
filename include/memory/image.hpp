@@ -38,16 +38,16 @@ public:
 
     void clear();
     ImageLoadResult load(std::istream& input);
-    bool in_bounds(Address address, size_t width);
+    bool in_bounds(Address address, size_t width) const;
 
-    std::optional<Byte> read_byte(Address address);
-    std::optional<HalfWord> read_half(Address address);
-    std::optional<Word> read_word(Address address);
+    std::optional<Byte> read_byte(Address address) const;
+    std::optional<HalfWord> read_half(Address address) const;
+    std::optional<Word> read_word(Address address) const;
 
     bool write_byte(Address address, Byte value);
     bool write_half(Address address, HalfWord value);
     bool write_word(Address address, Word value);
 
-    size_t loaded_byte_count();
-    std::optional<Address> highest_loaded_address();
+    size_t loaded_byte_count() const;
+    std::optional<Address> highest_loaded_address() const;
 };

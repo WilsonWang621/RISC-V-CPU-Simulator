@@ -15,7 +15,7 @@ void RenameTable::invalidate(
     table.fill(RobTag{});
 }
 
-RobTag RenameTable::lookup(RegisterIndex idx){
+RobTag RenameTable::lookup(RegisterIndex idx) const{
     if(!valid_register(idx) || !cur_table_[static_cast<std::size_t>(idx)].valid){
         return RobTag{};
     }
@@ -33,7 +33,7 @@ void RenameTable::latch(){
     cur_table_[0] = RobTag{};
 }
 
-bool RenameTable::busy(RegisterIndex reg){
+bool RenameTable::busy(RegisterIndex reg) const{
     return lookup(reg).valid;
 }
 

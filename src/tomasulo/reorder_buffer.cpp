@@ -47,7 +47,7 @@ bool ReorderBuffer::matching_entry(
 
     const size_t index = static_cast<size_t>(tag.index);
 
-    if(index > ReorderBuffer::kCapacity) return false;
+    if(index >= ReorderBuffer::kCapacity) return false;
 
     return entries[index].valid && entries[index].tag == tag;
 }
