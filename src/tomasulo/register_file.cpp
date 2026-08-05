@@ -9,7 +9,7 @@ void RegisterFile::reset(){
     pending_write_ = RegisterWrite{};
 }
 
-Word RegisterFile::read(RegisterIndex idx){
+Word RegisterFile::read(RegisterIndex idx) const{
     const std::size_t pos = static_cast<std::size_t>(idx);
     if(pos == 0U || pos >= RegisterFile::kRegisterCount){
         return Word{0};

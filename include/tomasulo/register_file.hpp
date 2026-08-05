@@ -22,7 +22,7 @@ public:
 
     // 读取当前周期的已提交寄存器状态。
     // x0 和非法寄存器编号都返回 0。
-    Word read(RegisterIndex idx);
+    Word read(RegisterIndex idx) const;
 
     const std::array<Word, kRegisterCount>& values();
 
