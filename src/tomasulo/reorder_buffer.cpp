@@ -167,13 +167,6 @@ bool ReorderBuffer::apply(
     return issue_accepted;
 }
 
-ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
-    const ROBDecision decision = plan();
-    ROBOutputs outputs = decision.outputs;
-    outputs.issue_accepted = apply(inputs, decision);
-    return outputs;
-}
-
 const std::array<ROBEntry, ReorderBuffer::kCapacity>& ReorderBuffer::entries() const{
     return cur_;
 }

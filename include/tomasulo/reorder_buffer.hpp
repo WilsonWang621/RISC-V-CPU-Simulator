@@ -103,9 +103,6 @@ public:
     ROBDecision plan() const;
     bool apply(const ROBInputs& inputs, const ROBDecision& decision);
 
-    // 兼容独立模块测试；等价于 plan() + apply()。
-    ROBOutputs evaluate(const ROBInputs& inputs);
-
     const std::array<ROBEntry, kCapacity>& entries() const;
 
 private:

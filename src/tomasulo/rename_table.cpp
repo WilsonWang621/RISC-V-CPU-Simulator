@@ -37,7 +37,7 @@ bool RenameTable::busy(RegisterIndex reg) const{
     return lookup(reg).valid;
 }
 
-void RenameTable::evaluate_updates(const RATWrite& issue_write, const RATCommit& commit, bool flush){
+void RenameTable::apply(const RATWrite& issue_write, const RATCommit& commit, bool flush){
     next_table_ = cur_table_;
     // 当前设计在控制指令到达 ROB 队首时进行错误预测恢复。
     // 此时 ROB 中剩余指令全部比该控制指令年轻，因此可以清空 RAT。

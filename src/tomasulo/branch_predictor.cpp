@@ -16,7 +16,7 @@ std::uint8_t BranchPredictor::counter(Address pc)const{
     return current_[index_of(pc)];
 }
 
-void BranchPredictor::evaluate(const BranchPredictorUpdate& update){
+void BranchPredictor::apply(const BranchPredictorUpdate& update){
     next_ = current_;
     next_prediction_count_ = prediction_count_;
     next_correct_count_ = correct_count_;

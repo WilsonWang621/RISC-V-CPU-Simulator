@@ -271,7 +271,7 @@ void CPU::cycle(){
                         issue_inputs.rs2 = source_state(packet.decoded.rs2);
                         issue_inputs.rs_available = reservation_station_.available();
 
-                        issue_outputs = issue_unit_.evaluate(issue_inputs);
+                        issue_outputs = issue_unit_.plan(issue_inputs);
                     }
                 }
                 break;
@@ -401,19 +401,19 @@ void CPU::cycle(){
                 lsq_issue_accepted = load_store_queue_.apply(lsq_inputs, lsq_decision);
                 break;
             case ApplyModule::FunctionalUnit:
-                fu_accepted = functional_unit_.evaluate(execute, rob_preview.flush, cdb_outputs.integer_granted);
+                fu_accepted = functional_unit_.apply(execute, rob_preview.flush, cdb_outputs.integer_granted);
                 break;
             case ApplyModule::RegisterFile:
-                register_file_.evaluate_commit(register_write);
+                register_file_.apply(register_write);
                 break;
             case ApplyModule::RenameTable:
-                rename_table_.evaluate_updates(rat_write, rat_commit, rob_outputs.flush);
+                rename_table_.apply(rat_write, rat_commit, rob_outputs.flush);
                 break;
             case ApplyModule::BranchPredictor:
-                branch_predictor_.evaluate(predictor_update);
+                branch_predictor_.apply(predictor_update);
                 break;
             case ApplyModule::MemoryUnit:
-                memory_accepted = memory_unit_.evaluate(lsq_outputs.memory_request);
+                memory_accepted = memory_unit_.apply(lsq_outputs.memory_request);
                 break;
         }
     }

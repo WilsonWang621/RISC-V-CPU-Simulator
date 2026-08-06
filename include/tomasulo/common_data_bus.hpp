@@ -43,9 +43,6 @@ public:
     CDBDecision plan(const CDBInputs& inputs) const;
     void apply(const CDBDecision& decision);
 
-    // 兼容单元测试与独立模块使用；等价于 plan() + apply()。
-    CDBOutputs evaluate(const CDBInputs& inputs);
-
     void reset();
     void latch();
 

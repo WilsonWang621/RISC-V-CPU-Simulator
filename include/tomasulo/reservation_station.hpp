@@ -69,9 +69,6 @@ public:
     RSDecision plan(bool flush = false) const;
     bool apply(const RSInputs& inputs, const RSDecision& decision);
 
-    // 兼容独立模块测试；等价于 plan() + apply()。
-    RSOutputs evaluate(const RSInputs& inputs);
-
 
 private:
     static constexpr std::size_t kInvalidIndex = kCapacity;

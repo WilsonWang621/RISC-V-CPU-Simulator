@@ -24,7 +24,7 @@ public:
     // result_accepted:当前 current_result_ 是否获得 CDB 仲裁。
     // flush: 分支恢复信号，优先级最高。
     // 返回值表示 execute 是否被 FU 接收
-    bool evaluate(const Execute& execute, bool flush, bool result_accepted);
+    bool apply(const Execute& execute, bool flush, bool result_accepted);
 
 private:
     FUResult current_result_{};

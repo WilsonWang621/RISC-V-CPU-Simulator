@@ -36,7 +36,7 @@ public:
     // 根据本周期 Issue、Commit 和 Flush 信号计算下一状态
     // 优先级：flush > issue write > commit clear
     // 因此同周期写同一 rd 时，年轻的 Issue 映射最终保留下来
-    void evaluate_updates(const RATWrite& issue_write, const RATCommit& commit, bool flush);
+    void apply(const RATWrite& issue_write, const RATCommit& commit, bool flush);
 private:
     static constexpr std::size_t kRegisterCount = 32U;
     std::array<RobTag, kRegisterCount> cur_table_{};

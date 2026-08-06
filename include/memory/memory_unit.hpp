@@ -73,7 +73,7 @@ public:
 
     DataMemoryResponse data_response() const;
 
-    bool evaluate(const DataMemoryRequest& request);
+    bool apply(const DataMemoryRequest& request);
 
     void clear();
 
@@ -99,7 +99,7 @@ private:
     DataMemoryResponse current_response_{};
     DataMemoryResponse next_response_{};
 
-    // evaluate 阶段只准备写事件，latch 时才修改 MemoryImage
+    // apply 阶段只准备写事件，latch 时才修改 MemoryImage
     PendingStoreWrite next_store_write_{};
 
     static std::size_t width_in_bytes(MemoryWidth width);

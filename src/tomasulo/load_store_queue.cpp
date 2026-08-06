@@ -287,17 +287,3 @@ bool LoadStoreQueue::apply(
 
     return issue_accepted;
 }
-
-LSQOutputs LoadStoreQueue::evaluate(const LSQInputs& inputs){
-    LSQObserveInputs observe{};
-    observe.store_request = inputs.store_request;
-    observe.memory_response = inputs.memory_response;
-    observe.memory_available = inputs.memory_available;
-    observe.load_result_granted = inputs.load_result_granted;
-    observe.flush = inputs.flush;
-
-    const LSQDecision decision = plan(observe);
-    LSQOutputs outputs = decision.outputs;
-    outputs.issue_accepted = apply(inputs, decision);
-    return outputs;
-}

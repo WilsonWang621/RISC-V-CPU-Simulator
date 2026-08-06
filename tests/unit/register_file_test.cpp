@@ -36,7 +36,7 @@ void test_constructor_initializes_all_registers_to_zero() {
 void test_commit_becomes_visible_only_after_latch() {
     RegisterFile registers;
 
-    registers.evaluate_commit(make_write(5U, 0x12345678U));
+    registers.apply(make_write(5U, 0x12345678U));
 
     EXPECT_EQ(registers.read(5U), Word{0});
     EXPECT_EQ(registers.values()[5U], Word{0});
@@ -50,7 +50,7 @@ void test_commit_becomes_visible_only_after_latch() {
 void test_x0_ignores_writes() {
     RegisterFile registers;
 
-    registers.evaluate_commit(make_write(0U, 0xffffffffU));
+    registers.apply(make_write(0U, 0xffffffffU));
     registers.latch();
 
     EXPECT_EQ(registers.read(0U), Word{0});
@@ -60,9 +60,9 @@ void test_x0_ignores_writes() {
 void test_invalid_register_indices_are_ignored() {
     RegisterFile registers;
 
-    registers.evaluate_commit(make_write(32U, 0x11111111U));
+    registers.apply(make_write(32U, 0x11111111U));
     registers.latch();
-    registers.evaluate_commit(make_write(255U, 0x22222222U));
+    registers.apply(make_write(255U, 0x22222222U));
     registers.latch();
 
     EXPECT_EQ(registers.read(32U), Word{0});
@@ -73,24 +73,24 @@ void test_invalid_register_indices_are_ignored() {
 void test_invalid_commit_does_not_write() {
     RegisterFile registers;
 
-    registers.evaluate_commit(make_write(7U, 0xabcdef01U, false));
+    registers.apply(make_write(7U, 0xabcdef01U, false));
     registers.latch();
 
     EXPECT_EQ(registers.read(7U), Word{0});
 }
 
-void test_latest_evaluation_wins_within_a_cycle() {
+void test_latest_apply_wins_within_a_cycle() {
     RegisterFile registers;
 
-    registers.evaluate_commit(make_write(3U, 10U));
-    registers.evaluate_commit(make_write(4U, 20U));
+    registers.apply(make_write(3U, 10U));
+    registers.apply(make_write(4U, 20U));
     registers.latch();
 
     EXPECT_EQ(registers.read(3U), Word{0});
     EXPECT_EQ(registers.read(4U), Word{20U});
 
-    registers.evaluate_commit(make_write(6U, 30U));
-    registers.evaluate_commit(RegisterWrite{});
+    registers.apply(make_write(6U, 30U));
+    registers.apply(RegisterWrite{});
     registers.latch();
 
     EXPECT_EQ(registers.read(6U), Word{0});
@@ -99,7 +99,7 @@ void test_latest_evaluation_wins_within_a_cycle() {
 void test_latch_consumes_pending_write_once() {
     RegisterFile registers;
 
-    registers.evaluate_commit(make_write(8U, 80U));
+    registers.apply(make_write(8U, 80U));
     registers.latch();
     registers.latch();
 
@@ -110,9 +110,9 @@ void test_latch_consumes_pending_write_once() {
 void test_reset_clears_committed_and_pending_state() {
     RegisterFile registers;
 
-    registers.evaluate_commit(make_write(1U, 11U));
+    registers.apply(make_write(1U, 11U));
     registers.latch();
-    registers.evaluate_commit(make_write(2U, 22U));
+    registers.apply(make_write(2U, 22U));
 
     registers.reset();
     registers.latch();
@@ -123,9 +123,9 @@ void test_reset_clears_committed_and_pending_state() {
 void test_register_boundaries_can_be_written() {
     RegisterFile registers;
 
-    registers.evaluate_commit(make_write(1U, 0x11111111U));
+    registers.apply(make_write(1U, 0x11111111U));
     registers.latch();
-    registers.evaluate_commit(make_write(31U, 0x31313131U));
+    registers.apply(make_write(31U, 0x31313131U));
     registers.latch();
 
     EXPECT_EQ(registers.read(1U), Word{0x11111111U});
@@ -154,7 +154,7 @@ int main(int argc, char* argv[]) {
         {"x0", test_x0_ignores_writes},
         {"invalid-index", test_invalid_register_indices_are_ignored},
         {"invalid-commit", test_invalid_commit_does_not_write},
-        {"overwrite", test_latest_evaluation_wins_within_a_cycle},
+        {"overwrite", test_latest_apply_wins_within_a_cycle},
         {"consume", test_latch_consumes_pending_write_once},
         {"reset", test_reset_clears_committed_and_pending_state},
         {"boundaries", test_register_boundaries_can_be_written},

@@ -28,7 +28,7 @@ public:
     bool predict_taken(Address pc) const;
 
     // 每周期调用一次；没有分支提交时传 valid=false。
-    void evaluate(const BranchPredictorUpdate& update);
+    void apply(const BranchPredictorUpdate& update);
 
     void latch();
     void reset();

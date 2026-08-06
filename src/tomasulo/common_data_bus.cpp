@@ -80,9 +80,3 @@ CDBDecision CommonDataBus::plan(const CDBInputs& inputs) const{
 void CommonDataBus::apply(const CDBDecision& decision){
     next_prefer_load = decision.next_prefer_load;
 }
-
-CDBOutputs CommonDataBus::evaluate(const CDBInputs& inputs){
-    const CDBDecision decision = plan(inputs);
-    apply(decision);
-    return decision.outputs;
-}

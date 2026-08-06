@@ -168,10 +168,3 @@ bool ReservationStation::apply(
 
     return issue_accepted;
 }
-
-RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
-    const RSDecision decision = plan(inputs.flush);
-    RSOutputs outputs = decision.outputs;
-    outputs.issue_accepted = apply(inputs, decision);
-    return outputs;
-}

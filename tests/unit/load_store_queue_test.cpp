@@ -109,8 +109,22 @@ void expect_no_actions(const LSQOutputs& outputs) {
     EXPECT_FALSE(outputs.memory_error);
 }
 
+LSQOutputs plan_and_apply(LoadStoreQueue& queue, const LSQInputs& inputs) {
+    LSQObserveInputs observe{};
+    observe.store_request = inputs.store_request;
+    observe.memory_response = inputs.memory_response;
+    observe.memory_available = inputs.memory_available;
+    observe.load_result_granted = inputs.load_result_granted;
+    observe.flush = inputs.flush;
+
+    const LSQDecision decision = queue.plan(observe);
+    LSQOutputs outputs = decision.outputs;
+    outputs.issue_accepted = queue.apply(inputs, decision);
+    return outputs;
+}
+
 void insert_and_latch(LoadStoreQueue& queue, const LSQEntry& entry) {
-    const LSQOutputs outputs = queue.evaluate(issue_input(entry));
+    const LSQOutputs outputs = plan_and_apply(queue, issue_input(entry));
     EXPECT_TRUE(outputs.issue_accepted);
     queue.latch();
 }
@@ -138,7 +152,7 @@ void test_issue_is_visible_only_after_latch() {
         0x24U
     );
 
-    const LSQOutputs outputs = queue.evaluate(issue_input(load));
+    const LSQOutputs outputs = plan_and_apply(queue, issue_input(load));
     EXPECT_TRUE(outputs.issue_accepted);
     EXPECT_TRUE(queue.empty());
     EXPECT_EQ(queue.size(), std::size_t{0});
@@ -162,13 +176,13 @@ void test_invalid_issue_does_not_allocate() {
 
     LSQInputs invalid_signal{};
     invalid_signal.issue_entry = make_load(make_tag(2U));
-    expect_no_actions(queue.evaluate(invalid_signal));
+    expect_no_actions(plan_and_apply(queue, invalid_signal));
     queue.latch();
     EXPECT_TRUE(queue.empty());
 
     LSQInputs invalid_entry{};
     invalid_entry.issue_valid = true;
-    expect_no_actions(queue.evaluate(invalid_entry));
+    expect_no_actions(plan_and_apply(queue, invalid_entry));
     queue.latch();
     EXPECT_TRUE(queue.empty());
 }
@@ -177,7 +191,7 @@ void test_capacity_and_backpressure() {
     LoadStoreQueue queue;
 
     for (std::size_t index = 0; index < LoadStoreQueue::kCapacity; ++index) {
-        const LSQOutputs outputs = queue.evaluate(
+        const LSQOutputs outputs = plan_and_apply(queue,
             issue_input(make_load(make_tag(static_cast<RobIndex>(index + 1U))))
         );
         EXPECT_TRUE(outputs.issue_accepted);
@@ -187,7 +201,7 @@ void test_capacity_and_backpressure() {
     EXPECT_TRUE(queue.full());
     EXPECT_EQ(queue.size(), LoadStoreQueue::kCapacity);
 
-    const LSQOutputs rejected = queue.evaluate(
+    const LSQOutputs rejected = plan_and_apply(queue,
         issue_input(make_load(make_tag(100U)))
     );
     EXPECT_FALSE(rejected.issue_accepted);
@@ -213,7 +227,7 @@ void test_cdb_wakes_base_and_store_data_after_latch() {
 
     LSQInputs wake_base{};
     wake_base.cdb = CDBMsg{base_tag, 0x3000U, true};
-    (void)queue.evaluate(wake_base);
+    (void)plan_and_apply(queue, wake_base);
     EXPECT_FALSE(queue.entries()[0].base.ready);
     queue.latch();
 
@@ -225,7 +239,7 @@ void test_cdb_wakes_base_and_store_data_after_latch() {
 
     LSQInputs wake_data{};
     wake_data.cdb = CDBMsg{data_tag, 0xdeadbeefU, true};
-    (void)queue.evaluate(wake_data);
+    (void)plan_and_apply(queue, wake_data);
     queue.latch();
 
     EXPECT_TRUE(queue.entries()[0].store_data.ready);
@@ -242,7 +256,7 @@ void test_load_request_contains_expected_fields() {
 
     LSQInputs inputs{};
     inputs.memory_available = true;
-    const LSQOutputs outputs = queue.evaluate(inputs);
+    const LSQOutputs outputs = plan_and_apply(queue, inputs);
 
     EXPECT_TRUE(outputs.memory_request.valid);
     EXPECT_EQ(outputs.memory_request.type, MemoryAccessType::LOAD);
@@ -254,7 +268,7 @@ void test_load_request_contains_expected_fields() {
     queue.latch();
     EXPECT_TRUE(queue.entries()[0].request_sent);
 
-    const LSQOutputs duplicate = queue.evaluate(inputs);
+    const LSQOutputs duplicate = plan_and_apply(queue, inputs);
     EXPECT_FALSE(duplicate.memory_request.valid);
 }
 
@@ -274,17 +288,17 @@ void test_store_requires_matching_commit_authorization() {
 
     LSQInputs unavailable{};
     unavailable.memory_available = true;
-    EXPECT_FALSE(queue.evaluate(unavailable).memory_request.valid);
+    EXPECT_FALSE(plan_and_apply(queue, unavailable).memory_request.valid);
 
     LSQInputs wrong_tag{};
     wrong_tag.memory_available = true;
     wrong_tag.store_request = StoreCommitRequest{make_tag(41U), true};
-    EXPECT_FALSE(queue.evaluate(wrong_tag).memory_request.valid);
+    EXPECT_FALSE(plan_and_apply(queue, wrong_tag).memory_request.valid);
 
     LSQInputs authorized{};
     authorized.memory_available = true;
     authorized.store_request = StoreCommitRequest{destination, true};
-    const LSQOutputs outputs = queue.evaluate(authorized);
+    const LSQOutputs outputs = plan_and_apply(queue, authorized);
 
     EXPECT_TRUE(outputs.memory_request.valid);
     EXPECT_EQ(outputs.memory_request.type, MemoryAccessType::STORE);
@@ -320,13 +334,13 @@ void test_load_response_is_extended_and_buffered() {
 
         LSQInputs send{};
         send.memory_available = true;
-        EXPECT_TRUE(queue.evaluate(send).memory_request.valid);
+        EXPECT_TRUE(plan_and_apply(queue, send).memory_request.valid);
         queue.latch();
 
         LSQInputs response{};
         response.memory_response =
             memory_response(destination, cases[index].raw);
-        const LSQOutputs response_outputs = queue.evaluate(response);
+        const LSQOutputs response_outputs = plan_and_apply(queue, response);
         EXPECT_FALSE(response_outputs.memory_error);
         expect_empty_result(queue.load_result());
         queue.latch();
@@ -346,22 +360,22 @@ void test_load_result_waits_for_cdb_grant() {
 
     LSQInputs send{};
     send.memory_available = true;
-    (void)queue.evaluate(send);
+    (void)plan_and_apply(queue, send);
     queue.latch();
 
     LSQInputs response{};
     response.memory_response = memory_response(destination, 0x13572468U);
-    (void)queue.evaluate(response);
+    (void)plan_and_apply(queue, response);
     queue.latch();
     EXPECT_TRUE(queue.load_result().valid);
 
-    (void)queue.evaluate(LSQInputs{});
+    (void)plan_and_apply(queue, LSQInputs{});
     queue.latch();
     EXPECT_TRUE(queue.load_result().valid);
 
     LSQInputs granted{};
     granted.load_result_granted = true;
-    (void)queue.evaluate(granted);
+    (void)plan_and_apply(queue, granted);
     EXPECT_TRUE(queue.load_result().valid);
     queue.latch();
     expect_empty_result(queue.load_result());
@@ -375,13 +389,13 @@ void test_store_response_reports_completion() {
     LSQInputs send{};
     send.memory_available = true;
     send.store_request = StoreCommitRequest{destination, true};
-    EXPECT_TRUE(queue.evaluate(send).memory_request.valid);
+    EXPECT_TRUE(plan_and_apply(queue, send).memory_request.valid);
     queue.latch();
 
     LSQInputs response{};
     response.memory_response =
         memory_response(destination, 0U, true, true);
-    const LSQOutputs outputs = queue.evaluate(response);
+    const LSQOutputs outputs = plan_and_apply(queue, response);
 
     EXPECT_TRUE(outputs.store_completion.valid);
     expect_tag(outputs.store_completion.tag, destination);
@@ -398,12 +412,12 @@ void test_mismatched_and_failed_responses() {
 
     LSQInputs send{};
     send.memory_available = true;
-    (void)queue.evaluate(send);
+    (void)plan_and_apply(queue, send);
     queue.latch();
 
     LSQInputs stale{};
     stale.memory_response = memory_response(make_tag(80U, 4U), 99U);
-    expect_no_actions(queue.evaluate(stale));
+    expect_no_actions(plan_and_apply(queue, stale));
     queue.latch();
     EXPECT_EQ(queue.size(), std::size_t{1});
     expect_empty_result(queue.load_result());
@@ -411,7 +425,7 @@ void test_mismatched_and_failed_responses() {
     LSQInputs failed{};
     failed.memory_response =
         memory_response(destination, 0U, false, false);
-    const LSQOutputs outputs = queue.evaluate(failed);
+    const LSQOutputs outputs = plan_and_apply(queue, failed);
     EXPECT_TRUE(outputs.memory_error);
     EXPECT_FALSE(outputs.store_completion.valid);
     queue.latch();
@@ -432,7 +446,7 @@ void test_only_head_can_send_memory_request() {
 
     LSQInputs inputs{};
     inputs.memory_available = true;
-    const LSQOutputs outputs = queue.evaluate(inputs);
+    const LSQOutputs outputs = plan_and_apply(queue, inputs);
     EXPECT_FALSE(outputs.memory_request.valid);
     EXPECT_EQ(queue.size(), std::size_t{2});
 }
@@ -445,7 +459,7 @@ void test_flush_and_reset_clear_all_state() {
 
     LSQInputs flush{};
     flush.flush = true;
-    expect_no_actions(queue.evaluate(flush));
+    expect_no_actions(plan_and_apply(queue, flush));
     EXPECT_EQ(queue.size(), std::size_t{2});
     queue.latch();
 
@@ -455,7 +469,7 @@ void test_flush_and_reset_clear_all_state() {
         EXPECT_FALSE(entry.valid);
     }
 
-    (void)queue.evaluate(issue_input(make_load(make_tag(102U))));
+    (void)plan_and_apply(queue, issue_input(make_load(make_tag(102U))));
     queue.reset();
     queue.latch();
     EXPECT_TRUE(queue.empty());

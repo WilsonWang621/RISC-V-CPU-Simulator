@@ -98,9 +98,6 @@ public:
     LSQDecision plan(const LSQObserveInputs& inputs) const;
     bool apply(const LSQInputs& inputs, const LSQDecision& decision);
 
-    // 兼容独立模块测试；等价于 plan() + apply()。
-    LSQOutputs evaluate(const LSQInputs& inputs);
-
     const std::array<LSQEntry, LoadStoreQueue::kCapacity>& entries() const;
 private:
     std::array<LSQEntry, kCapacity> cur_{};

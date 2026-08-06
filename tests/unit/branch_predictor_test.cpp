@@ -34,7 +34,7 @@ void apply_update(
     BranchPredictor& predictor,
     const BranchPredictorUpdate& update
 ) {
-    predictor.evaluate(update);
+    predictor.apply(update);
     predictor.latch();
 }
 
@@ -60,7 +60,7 @@ void test_update_is_visible_only_after_latch() {
     BranchPredictor predictor;
     constexpr Address pc = 0x100U;
 
-    predictor.evaluate(
+    predictor.apply(
         make_update(pc, true, pc + 4U, pc + 8U)
     );
 
@@ -88,7 +88,7 @@ void test_invalid_update_preserves_all_state() {
     const CycleCount predictions_before = predictor.prediction_count();
     const CycleCount correct_before = predictor.correct_count();
 
-    predictor.evaluate(
+    predictor.apply(
         make_update(pc, false, 0x184U, 0x188U, false)
     );
     predictor.latch();
@@ -161,7 +161,7 @@ void test_pc_indexing_ignores_low_bits_and_aliases_by_table_size() {
 void test_statistics_are_updated_after_latch() {
     BranchPredictor predictor;
 
-    predictor.evaluate(
+    predictor.apply(
         make_update(0x400U, true, 0x480U, 0x480U)
     );
     EXPECT_EQ(predictor.prediction_count(), CycleCount{0});
@@ -172,7 +172,7 @@ void test_statistics_are_updated_after_latch() {
     EXPECT_EQ(predictor.correct_count(), CycleCount{1});
     EXPECT_EQ(predictor.accuracy(), 1.0);
 
-    predictor.evaluate(
+    predictor.apply(
         make_update(0x404U, false, 0x408U, 0x440U)
     );
     EXPECT_EQ(predictor.prediction_count(), CycleCount{1});

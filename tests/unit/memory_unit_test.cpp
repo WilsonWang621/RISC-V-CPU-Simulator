@@ -45,7 +45,7 @@ ImageLoadResult load_text(MemoryUnit& memory, const std::string& text) {
 }
 
 void idle_cycle(MemoryUnit& memory) {
-    EXPECT_FALSE(memory.evaluate(DataMemoryRequest{}));
+    EXPECT_FALSE(memory.apply(DataMemoryRequest{}));
     memory.latch();
 }
 
@@ -53,11 +53,11 @@ void issue_and_finish(
     MemoryUnit& memory,
     const DataMemoryRequest& request
 ) {
-    EXPECT_TRUE(memory.evaluate(request));
+    EXPECT_TRUE(memory.apply(request));
     memory.latch();
 
     for (std::size_t cycle = 0U; cycle < MemoryUnit::kDataLatency; ++cycle) {
-        EXPECT_FALSE(memory.evaluate(DataMemoryRequest{}));
+        EXPECT_FALSE(memory.apply(DataMemoryRequest{}));
         memory.latch();
     }
 }
@@ -82,7 +82,7 @@ void test_constructor_starts_idle() {
     EXPECT_TRUE(memory.data_port_available());
     expect_empty_response(memory.data_response());
 
-    EXPECT_FALSE(memory.evaluate(DataMemoryRequest{}));
+    EXPECT_FALSE(memory.apply(DataMemoryRequest{}));
     EXPECT_TRUE(memory.data_port_available());
     memory.latch();
 
@@ -131,7 +131,7 @@ void test_request_latency_and_response_pulse() {
         tag
     );
 
-    EXPECT_TRUE(memory.evaluate(request));
+    EXPECT_TRUE(memory.apply(request));
     expect_empty_response(memory.data_response());
     memory.latch();
     EXPECT_FALSE(memory.data_port_available());
@@ -141,14 +141,14 @@ void test_request_latency_and_response_pulse() {
         cycle < MemoryUnit::kDataLatency;
         ++cycle
     ) {
-        EXPECT_FALSE(memory.evaluate(DataMemoryRequest{}));
+        EXPECT_FALSE(memory.apply(DataMemoryRequest{}));
         expect_empty_response(memory.data_response());
         memory.latch();
         expect_empty_response(memory.data_response());
         EXPECT_FALSE(memory.data_port_available());
     }
 
-    EXPECT_FALSE(memory.evaluate(DataMemoryRequest{}));
+    EXPECT_FALSE(memory.apply(DataMemoryRequest{}));
     expect_empty_response(memory.data_response());
     memory.latch();
 
@@ -182,15 +182,15 @@ void test_busy_port_rejects_second_request() {
         make_tag(5U)
     );
 
-    EXPECT_TRUE(memory.evaluate(first));
+    EXPECT_TRUE(memory.apply(first));
     memory.latch();
     EXPECT_FALSE(memory.data_port_available());
 
-    EXPECT_FALSE(memory.evaluate(second));
+    EXPECT_FALSE(memory.apply(second));
     memory.latch();
-    EXPECT_FALSE(memory.evaluate(second));
+    EXPECT_FALSE(memory.apply(second));
     memory.latch();
-    EXPECT_FALSE(memory.evaluate(second));
+    EXPECT_FALSE(memory.apply(second));
     memory.latch();
 
     const DataMemoryResponse response = memory.data_response();
@@ -249,7 +249,7 @@ void test_store_is_applied_only_on_completion_latch() {
         0x12345678U
     );
 
-    EXPECT_TRUE(memory.evaluate(store));
+    EXPECT_TRUE(memory.apply(store));
     memory.latch();
     for (
         std::size_t cycle = 1U;
@@ -264,7 +264,7 @@ void test_store_is_applied_only_on_completion_latch() {
     fetch.valid = true;
     EXPECT_EQ(memory.fetch(fetch).instruction, InstructionBits{0U});
 
-    EXPECT_FALSE(memory.evaluate(DataMemoryRequest{}));
+    EXPECT_FALSE(memory.apply(DataMemoryRequest{}));
     EXPECT_EQ(memory.fetch(fetch).instruction, InstructionBits{0U});
     memory.latch();
 
@@ -358,7 +358,7 @@ void test_reset_and_load_cancel_in_flight_transaction() {
         0xc0U,
         make_tag(14U)
     );
-    EXPECT_TRUE(memory.evaluate(request));
+    EXPECT_TRUE(memory.apply(request));
     memory.latch();
     memory.reset();
     EXPECT_TRUE(memory.data_port_available());
@@ -369,7 +369,7 @@ void test_reset_and_load_cancel_in_flight_transaction() {
     fetch.valid = true;
     EXPECT_EQ(memory.fetch(fetch).instruction, InstructionBits{0xddccbbaaU});
 
-    EXPECT_TRUE(memory.evaluate(request));
+    EXPECT_TRUE(memory.apply(request));
     memory.latch();
     EXPECT_TRUE(load_text(memory, "@000000c0 01 02 03 04").ok());
     EXPECT_TRUE(memory.data_port_available());
@@ -387,7 +387,7 @@ void test_clear_erases_memory_and_pipeline_state() {
         0xe0U,
         make_tag(15U)
     );
-    EXPECT_TRUE(memory.evaluate(request));
+    EXPECT_TRUE(memory.apply(request));
     memory.latch();
     memory.clear();
 

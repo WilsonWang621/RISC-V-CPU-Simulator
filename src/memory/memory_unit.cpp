@@ -150,7 +150,7 @@ void MemoryUnit::complete_current_transaction(){
     next_transaction_ = DataTransaction{};
 }
 
-bool MemoryUnit::evaluate(const DataMemoryRequest& request){
+bool MemoryUnit::apply(const DataMemoryRequest& request){
     // 默认保持当前事务。
     next_transaction_ = current_transaction_;
 
@@ -214,7 +214,7 @@ void MemoryUnit::latch(){
     if (next_store_write_.valid) {
         const bool written = apply_store_write(next_store_write_);
 
-        // evaluate 已经检查过边界，这里不应失败。
+        // apply 已经检查过边界，这里不应失败。
         assert(written);
     }
 

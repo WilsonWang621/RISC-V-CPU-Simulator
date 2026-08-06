@@ -41,11 +41,18 @@ ROBInputs issue_input(const ROBEntry& entry) {
     return inputs;
 }
 
+ROBOutputs plan_and_apply(ReorderBuffer& rob, const ROBInputs& inputs) {
+    const ROBDecision decision = rob.plan();
+    ROBOutputs outputs = decision.outputs;
+    outputs.issue_accepted = rob.apply(inputs, decision);
+    return outputs;
+}
+
 ROBOutputs issue_and_latch(
     ReorderBuffer& rob,
     ROBEntry entry
 ) {
-    const ROBOutputs outputs = rob.evaluate(issue_input(entry));
+    const ROBOutputs outputs = plan_and_apply(rob, issue_input(entry));
     EXPECT_TRUE(outputs.issue_accepted);
     rob.latch();
     return outputs;
@@ -80,7 +87,7 @@ void complete_and_latch(
 ) {
     ROBInputs inputs{};
     inputs.completion = completion;
-    const ROBOutputs outputs = rob.evaluate(inputs);
+    const ROBOutputs outputs = plan_and_apply(rob, inputs);
     EXPECT_FALSE(outputs.commit.valid);
     rob.latch();
 }
@@ -120,7 +127,7 @@ void test_issue_is_visible_only_after_latch() {
     const RobTag tag = rob.next_tag();
     const ROBEntry entry = make_entry(tag, OP::SUB, 7U);
 
-    const ROBOutputs outputs = rob.evaluate(issue_input(entry));
+    const ROBOutputs outputs = plan_and_apply(rob, issue_input(entry));
 
     EXPECT_TRUE(outputs.issue_accepted);
     EXPECT_TRUE(rob.empty());
@@ -144,14 +151,14 @@ void test_invalid_issue_requests_are_rejected() {
 
     ROBInputs disabled = issue_input(make_entry(expected));
     disabled.issue_valid = false;
-    EXPECT_FALSE(rob.evaluate(disabled).issue_accepted);
+    EXPECT_FALSE(plan_and_apply(rob, disabled).issue_accepted);
     rob.latch();
     EXPECT_TRUE(rob.empty());
 
     ROBEntry invalid_entry = make_entry(expected);
     invalid_entry.valid = false;
     EXPECT_FALSE(
-        rob.evaluate(issue_input(invalid_entry)).issue_accepted
+        plan_and_apply(rob, issue_input(invalid_entry)).issue_accepted
     );
     rob.latch();
     EXPECT_TRUE(rob.empty());
@@ -159,7 +166,7 @@ void test_invalid_issue_requests_are_rejected() {
     RobTag wrong_tag = expected;
     ++wrong_tag.generation;
     EXPECT_FALSE(
-        rob.evaluate(issue_input(make_entry(wrong_tag))).issue_accepted
+        plan_and_apply(rob, issue_input(make_entry(wrong_tag))).issue_accepted
     );
     rob.latch();
     EXPECT_TRUE(rob.empty());
@@ -187,7 +194,7 @@ void test_completion_is_visible_and_committed_next_cycle() {
         EXPECT_EQ(completed->value, Word{0x12345678U});
     }
 
-    const ROBOutputs commit = rob.evaluate(ROBInputs{});
+    const ROBOutputs commit = plan_and_apply(rob, ROBInputs{});
     EXPECT_TRUE(commit.commit.valid);
     EXPECT_EQ(commit.commit.entry.value, Word{0x12345678U});
     expect_tag(commit.commit.entry.tag, issued.tag);
@@ -231,18 +238,18 @@ void test_out_of_order_completion_commits_in_order() {
 
     complete_and_latch(rob, completion_for(younger.tag, 22U));
 
-    const ROBOutputs blocked = rob.evaluate(ROBInputs{});
+    const ROBOutputs blocked = plan_and_apply(rob, ROBInputs{});
     EXPECT_FALSE(blocked.commit.valid);
     rob.latch();
 
     complete_and_latch(rob, completion_for(older.tag, 11U));
 
-    const ROBOutputs first_commit = rob.evaluate(ROBInputs{});
+    const ROBOutputs first_commit = plan_and_apply(rob, ROBInputs{});
     EXPECT_TRUE(first_commit.commit.valid);
     expect_tag(first_commit.commit.entry.tag, older.tag);
     rob.latch();
 
-    const ROBOutputs second_commit = rob.evaluate(ROBInputs{});
+    const ROBOutputs second_commit = plan_and_apply(rob, ROBInputs{});
     EXPECT_TRUE(second_commit.commit.valid);
     expect_tag(second_commit.commit.entry.tag, younger.tag);
     rob.latch();
@@ -257,7 +264,7 @@ void test_commit_and_issue_can_share_a_cycle() {
     issue_and_latch(rob, departing);
 
     const ROBEntry arriving = make_entry(rob.next_tag(), OP::ADD, 3U);
-    const ROBOutputs outputs = rob.evaluate(issue_input(arriving));
+    const ROBOutputs outputs = plan_and_apply(rob, issue_input(arriving));
 
     EXPECT_TRUE(outputs.commit.valid);
     EXPECT_TRUE(outputs.commit.halted);
@@ -289,7 +296,7 @@ void test_capacity_and_backpressure() {
     EXPECT_FALSE(rob.next_tag().valid);
 
     ROBEntry extra = make_entry(RobTag{0U, 99U, true});
-    const ROBOutputs rejected = rob.evaluate(issue_input(extra));
+    const ROBOutputs rejected = plan_and_apply(rob, issue_input(extra));
     rob.latch();
 
     EXPECT_FALSE(rejected.issue_accepted);
@@ -309,7 +316,7 @@ void test_generation_changes_when_slot_is_reused() {
         }
         issue_and_latch(rob, entry);
 
-        const ROBOutputs commit = rob.evaluate(ROBInputs{});
+        const ROBOutputs commit = plan_and_apply(rob, ROBInputs{});
         EXPECT_TRUE(commit.commit.valid);
         rob.latch();
     }
@@ -331,7 +338,7 @@ void test_store_waits_for_memory_completion() {
     store.writes_rd = false;
     issue_and_latch(rob, store);
 
-    const ROBOutputs request = rob.evaluate(ROBInputs{});
+    const ROBOutputs request = plan_and_apply(rob, ROBInputs{});
     EXPECT_TRUE(request.store_request.valid);
     expect_tag(request.store_request.tag, store.tag);
     EXPECT_FALSE(request.commit.valid);
@@ -340,12 +347,12 @@ void test_store_waits_for_memory_completion() {
     ROBInputs completion{};
     completion.store_completion =
         StoreCommitCompletion{store.tag, true};
-    const ROBOutputs completion_outputs = rob.evaluate(completion);
+    const ROBOutputs completion_outputs = plan_and_apply(rob, completion);
     EXPECT_TRUE(completion_outputs.store_request.valid);
     EXPECT_FALSE(completion_outputs.commit.valid);
     rob.latch();
 
-    const ROBOutputs commit = rob.evaluate(ROBInputs{});
+    const ROBOutputs commit = plan_and_apply(rob, ROBInputs{});
     EXPECT_TRUE(commit.commit.valid);
     EXPECT_TRUE(commit.commit.entry.is_store);
     rob.latch();
@@ -359,7 +366,7 @@ void test_non_store_ignores_store_completion() {
     ROBInputs inputs{};
     inputs.store_completion =
         StoreCommitCompletion{entry.tag, true};
-    EXPECT_FALSE(rob.evaluate(inputs).commit.valid);
+    EXPECT_FALSE(plan_and_apply(rob, inputs).commit.valid);
     rob.latch();
 
     const ROBEntry* unchanged = rob.lookup(entry.tag);
@@ -393,7 +400,7 @@ void test_control_completion_and_mispredict_flush() {
     }
 
     ROBEntry same_cycle_issue = make_entry(rob.next_tag(), OP::SUB, 7U);
-    const ROBOutputs commit = rob.evaluate(issue_input(same_cycle_issue));
+    const ROBOutputs commit = plan_and_apply(rob, issue_input(same_cycle_issue));
 
     EXPECT_TRUE(commit.commit.valid);
     EXPECT_TRUE(commit.commit.mispredicted);
@@ -418,7 +425,7 @@ void test_correct_control_prediction_does_not_flush() {
     issue_and_latch(rob, jump);
 
     const ROBEntry arriving = make_entry(rob.next_tag(), OP::ADD, 8U);
-    const ROBOutputs outputs = rob.evaluate(issue_input(arriving));
+    const ROBOutputs outputs = plan_and_apply(rob, issue_input(arriving));
 
     EXPECT_TRUE(outputs.commit.valid);
     EXPECT_FALSE(outputs.commit.mispredicted);
@@ -434,7 +441,7 @@ void test_reset_clears_current_and_pending_state() {
     allocate_entry(rob);
 
     ROBEntry pending = make_entry(rob.next_tag(), OP::SUB, 10U);
-    rob.evaluate(issue_input(pending));
+    plan_and_apply(rob, issue_input(pending));
 
     rob.reset();
     rob.latch();

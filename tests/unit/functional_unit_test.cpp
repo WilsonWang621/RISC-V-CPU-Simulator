@@ -59,7 +59,7 @@ FUResult execute_and_latch(Execute execute) {
     FunctionalUnit unit;
 
     EXPECT_TRUE(unit.can_accept(false));
-    EXPECT_TRUE(unit.evaluate(execute, false, false));
+    EXPECT_TRUE(unit.apply(execute, false, false));
     EXPECT_FALSE(unit.has_result());
     expect_empty_result(unit.result());
 
@@ -85,7 +85,7 @@ void test_invalid_execute_is_not_accepted() {
     FunctionalUnit unit;
     Execute execute{};
 
-    EXPECT_FALSE(unit.evaluate(execute, false, false));
+    EXPECT_FALSE(unit.apply(execute, false, false));
     unit.latch();
 
     EXPECT_FALSE(unit.has_result());
@@ -224,7 +224,7 @@ void test_jumps() {
 void test_backpressure_preserves_old_result() {
     FunctionalUnit unit;
     Execute first = make_execute(OP::ADD, 2U, 3U, 0U, kPc, make_tag(70U));
-    EXPECT_TRUE(unit.evaluate(first, false, false));
+    EXPECT_TRUE(unit.apply(first, false, false));
     unit.latch();
 
     EXPECT_TRUE(unit.has_result());
@@ -232,7 +232,7 @@ void test_backpressure_preserves_old_result() {
     EXPECT_TRUE(unit.can_accept(true));
 
     Execute second = make_execute(OP::SUB, 9U, 4U, 0U, kPc, make_tag(71U));
-    EXPECT_FALSE(unit.evaluate(second, false, false));
+    EXPECT_FALSE(unit.apply(second, false, false));
     unit.latch();
 
     const FUResult result = unit.result();
@@ -243,11 +243,11 @@ void test_backpressure_preserves_old_result() {
 void test_result_acceptance_clears_output() {
     FunctionalUnit unit;
     Execute execute = make_execute(OP::OR, 1U, 2U);
-    EXPECT_TRUE(unit.evaluate(execute, false, false));
+    EXPECT_TRUE(unit.apply(execute, false, false));
     unit.latch();
 
     Execute no_execute{};
-    EXPECT_FALSE(unit.evaluate(no_execute, false, true));
+    EXPECT_FALSE(unit.apply(no_execute, false, true));
 
     EXPECT_TRUE(unit.has_result());
     unit.latch();
@@ -259,11 +259,11 @@ void test_result_acceptance_clears_output() {
 void test_accept_old_result_and_execute_new_in_same_cycle() {
     FunctionalUnit unit;
     Execute first = make_execute(OP::ADD, 10U, 1U, 0U, kPc, make_tag(80U));
-    EXPECT_TRUE(unit.evaluate(first, false, false));
+    EXPECT_TRUE(unit.apply(first, false, false));
     unit.latch();
 
     Execute second = make_execute(OP::SUB, 20U, 3U, 0U, kPc, make_tag(81U));
-    EXPECT_TRUE(unit.evaluate(second, false, true));
+    EXPECT_TRUE(unit.apply(second, false, true));
 
     EXPECT_EQ(unit.result().result, Word{11U});
     expect_tag(unit.result().tag, first.tag);
@@ -277,11 +277,11 @@ void test_accept_old_result_and_execute_new_in_same_cycle() {
 void test_flush_has_highest_priority() {
     FunctionalUnit unit;
     Execute old_execute = make_execute(OP::ADD, 4U, 5U);
-    EXPECT_TRUE(unit.evaluate(old_execute, false, false));
+    EXPECT_TRUE(unit.apply(old_execute, false, false));
     unit.latch();
 
     Execute new_execute = make_execute(OP::SUB, 9U, 2U);
-    EXPECT_FALSE(unit.evaluate(new_execute, true, true));
+    EXPECT_FALSE(unit.apply(new_execute, true, true));
 
     EXPECT_TRUE(unit.has_result());
     unit.latch();
@@ -293,11 +293,11 @@ void test_flush_has_highest_priority() {
 void test_reset_clears_current_and_pending_result() {
     FunctionalUnit unit;
     Execute first = make_execute(OP::ADD, 1U, 2U);
-    EXPECT_TRUE(unit.evaluate(first, false, false));
+    EXPECT_TRUE(unit.apply(first, false, false));
     unit.latch();
 
     Execute pending = make_execute(OP::SUB, 8U, 3U);
-    EXPECT_TRUE(unit.evaluate(pending, false, true));
+    EXPECT_TRUE(unit.apply(pending, false, true));
 
     unit.reset();
     unit.latch();

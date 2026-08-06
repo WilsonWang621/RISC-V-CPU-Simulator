@@ -183,7 +183,7 @@ FUResult FunctionalUnit::execute_instruction(const Execute& execute){
     return output;
 }
 
-bool FunctionalUnit::evaluate(const Execute& execute, bool flush, bool result_accepted){
+bool FunctionalUnit::apply(const Execute& execute, bool flush, bool result_accepted){
     next_result_ = current_result_;
     // Flush 优先级最高：当前结果和本周期新输入都作废
     if(flush){

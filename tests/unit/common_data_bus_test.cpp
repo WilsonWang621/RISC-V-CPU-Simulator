@@ -88,20 +88,26 @@ void expect_selected(
     );
 }
 
+CDBOutputs plan_and_apply(CommonDataBus& bus, const CDBInputs& inputs) {
+    const CDBDecision decision = bus.plan(inputs);
+    bus.apply(decision);
+    return decision.outputs;
+}
+
 void test_empty_and_invalid_candidates_are_ignored() {
     CommonDataBus bus;
 
-    expect_empty(bus.evaluate(CDBInputs{}));
+    expect_empty(plan_and_apply(bus, CDBInputs{}));
 
     CDBInputs invalid_integer{};
     invalid_integer.integer_result =
         make_result(make_tag(1U), 0x11111111U, 0U, false, false, false);
-    expect_empty(bus.evaluate(invalid_integer));
+    expect_empty(plan_and_apply(bus, invalid_integer));
 
     CDBInputs invalid_load{};
     invalid_load.load_result =
         make_result(make_tag(2U, 1U, false), 0x22222222U);
-    expect_empty(bus.evaluate(invalid_load));
+    expect_empty(plan_and_apply(bus, invalid_load));
 }
 
 void test_integer_candidate_is_broadcast() {
@@ -118,7 +124,7 @@ void test_integer_candidate_is_broadcast() {
     inputs.integer_result = integer;
 
     expect_selected(
-        bus.evaluate(inputs),
+        plan_and_apply(bus, inputs),
         CDBSource::IntegerUnit,
         integer
     );
@@ -131,7 +137,7 @@ void test_load_candidate_is_broadcast() {
     CDBInputs inputs{};
     inputs.load_result = load;
 
-    expect_selected(bus.evaluate(inputs), CDBSource::LoadUnit, load);
+    expect_selected(plan_and_apply(bus, inputs), CDBSource::LoadUnit, load);
 }
 
 void test_competition_grants_exactly_one_producer() {
@@ -143,7 +149,7 @@ void test_competition_grants_exactly_one_producer() {
     inputs.integer_result = integer;
     inputs.load_result = load;
 
-    const CDBOutputs outputs = bus.evaluate(inputs);
+    const CDBOutputs outputs = plan_and_apply(bus, inputs);
     expect_selected(outputs, CDBSource::IntegerUnit, integer);
     EXPECT_EQ(
         static_cast<unsigned>(outputs.integer_granted)
@@ -162,17 +168,17 @@ void test_round_robin_alternates_after_latch() {
     inputs.load_result = load;
 
     expect_selected(
-        bus.evaluate(inputs),
+        plan_and_apply(bus, inputs),
         CDBSource::IntegerUnit,
         integer
     );
     bus.latch();
 
-    expect_selected(bus.evaluate(inputs), CDBSource::LoadUnit, load);
+    expect_selected(plan_and_apply(bus, inputs), CDBSource::LoadUnit, load);
     bus.latch();
 
     expect_selected(
-        bus.evaluate(inputs),
+        plan_and_apply(bus, inputs),
         CDBSource::IntegerUnit,
         integer
     );
@@ -188,18 +194,18 @@ void test_preference_changes_only_after_latch() {
     inputs.load_result = load;
 
     expect_selected(
-        bus.evaluate(inputs),
+        plan_and_apply(bus, inputs),
         CDBSource::IntegerUnit,
         integer
     );
     expect_selected(
-        bus.evaluate(inputs),
+        plan_and_apply(bus, inputs),
         CDBSource::IntegerUnit,
         integer
     );
 
     bus.latch();
-    expect_selected(bus.evaluate(inputs), CDBSource::LoadUnit, load);
+    expect_selected(plan_and_apply(bus, inputs), CDBSource::LoadUnit, load);
 }
 
 void test_single_integer_grant_affects_next_competition() {
@@ -210,7 +216,7 @@ void test_single_integer_grant_affects_next_competition() {
     CDBInputs integer_only{};
     integer_only.integer_result = integer;
     expect_selected(
-        bus.evaluate(integer_only),
+        plan_and_apply(bus, integer_only),
         CDBSource::IntegerUnit,
         integer
     );
@@ -220,7 +226,7 @@ void test_single_integer_grant_affects_next_competition() {
     competition.integer_result = integer;
     competition.load_result = load;
     expect_selected(
-        bus.evaluate(competition),
+        plan_and_apply(bus, competition),
         CDBSource::LoadUnit,
         load
     );
@@ -235,13 +241,13 @@ void test_reset_restores_integer_priority() {
     inputs.integer_result = integer;
     inputs.load_result = load;
 
-    (void)bus.evaluate(inputs);
+    (void)plan_and_apply(bus, inputs);
     bus.latch();
-    expect_selected(bus.evaluate(inputs), CDBSource::LoadUnit, load);
+    expect_selected(plan_and_apply(bus, inputs), CDBSource::LoadUnit, load);
 
     bus.reset();
     expect_selected(
-        bus.evaluate(inputs),
+        plan_and_apply(bus, inputs),
         CDBSource::IntegerUnit,
         integer
     );

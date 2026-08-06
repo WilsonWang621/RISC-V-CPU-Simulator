@@ -22,7 +22,7 @@ const std::array<Word, RegisterFile::kRegisterCount>& RegisterFile::values() con
     return register_;
 }
 
-void RegisterFile::evaluate_commit(const RegisterWrite& write){
+void RegisterFile::apply(const RegisterWrite& write){
     // 每周期都覆盖 pending_write_。
     // 即使本周期没有提交，也要传入 valid == false 的写请求，
     // 避免上一周期请求被重复执行。

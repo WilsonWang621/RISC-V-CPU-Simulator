@@ -28,7 +28,7 @@ public:
 
     // 记录本周期 ROB Commit 提供的写请求。
     // 该函数不会立即改变 read() 返回的值。
-    void evaluate_commit(const RegisterWrite& write);
+    void apply(const RegisterWrite& write);
 
     // 周期结束时锁存写入，并清除本周期写请求
     void latch();

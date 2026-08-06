@@ -81,18 +81,18 @@ void test_invalid_inputs_do_not_issue() {
     IssueUnit issue;
 
     IssueInputs empty{};
-    const IssueOutputs empty_outputs = issue.evaluate(empty);
+    const IssueOutputs empty_outputs = issue.plan(empty);
     EXPECT_EQ(empty_outputs.status, IssueStatus::Empty);
     expect_no_writes(empty_outputs);
 
     IssueInputs invalid_instruction = make_available_inputs(DecodedInstruction{});
-    const IssueOutputs invalid_outputs = issue.evaluate(invalid_instruction);
+    const IssueOutputs invalid_outputs = issue.plan(invalid_instruction);
     EXPECT_EQ(invalid_outputs.status, IssueStatus::InvalidInstruction);
     expect_no_writes(invalid_outputs);
 
     IssueInputs invalid_tag = make_available_inputs(make_add());
     invalid_tag.allocated_tag = RobTag{};
-    const IssueOutputs invalid_tag_outputs = issue.evaluate(invalid_tag);
+    const IssueOutputs invalid_tag_outputs = issue.plan(invalid_tag);
     EXPECT_EQ(invalid_tag_outputs.status, IssueStatus::InvalidAllocation);
     expect_no_writes(invalid_tag_outputs);
 }
@@ -102,13 +102,13 @@ void test_required_resource_backpressure() {
 
     IssueInputs no_rob = make_available_inputs(make_add());
     no_rob.rob_available = false;
-    const IssueOutputs no_rob_outputs = issue.evaluate(no_rob);
+    const IssueOutputs no_rob_outputs = issue.plan(no_rob);
     EXPECT_EQ(no_rob_outputs.status, IssueStatus::Unavailability);
     expect_no_writes(no_rob_outputs);
 
     IssueInputs no_rs = make_available_inputs(make_add());
     no_rs.rs_available = false;
-    const IssueOutputs no_rs_outputs = issue.evaluate(no_rs);
+    const IssueOutputs no_rs_outputs = issue.plan(no_rs);
     EXPECT_EQ(no_rs_outputs.status, IssueStatus::Unavailability);
     expect_no_writes(no_rs_outputs);
 
@@ -123,13 +123,13 @@ void test_required_resource_backpressure() {
 
     IssueInputs no_lsq = make_available_inputs(load);
     no_lsq.lsq_available = false;
-    const IssueOutputs no_lsq_outputs = issue.evaluate(no_lsq);
+    const IssueOutputs no_lsq_outputs = issue.plan(no_lsq);
     EXPECT_EQ(no_lsq_outputs.status, IssueStatus::Unavailability);
     expect_no_writes(no_lsq_outputs);
 
     IssueInputs load_without_rs = make_available_inputs(load);
     load_without_rs.rs_available = false;
-    const IssueOutputs load_outputs = issue.evaluate(load_without_rs);
+    const IssueOutputs load_outputs = issue.plan(load_without_rs);
     EXPECT_TRUE(load_outputs.issued());
     EXPECT_TRUE(load_outputs.write_rob);
     EXPECT_TRUE(load_outputs.write_lsq);
@@ -142,7 +142,7 @@ void test_alu_issue_builds_rob_rs_and_rename_entries() {
     inputs.rs1.architectural_value = 10U;
     inputs.rs2.architectural_value = 20U;
 
-    const IssueOutputs outputs = issue.evaluate(inputs);
+    const IssueOutputs outputs = issue.plan(inputs);
 
     EXPECT_TRUE(outputs.issued());
     EXPECT_TRUE(outputs.pop_decode);
@@ -180,7 +180,7 @@ void test_operand_sources_and_zero_register() {
 
     IssueInputs addi = make_available_inputs(make_addi());
     addi.rs1.architectural_value = 7U;
-    const IssueOutputs addi_outputs = issue.evaluate(addi);
+    const IssueOutputs addi_outputs = issue.plan(addi);
     expect_ready_operand(addi_outputs.rs_entry.lhs, 7U);
     expect_ready_operand(addi_outputs.rs_entry.rhs, 12U);
 
@@ -192,7 +192,7 @@ void test_operand_sources_and_zero_register() {
     auipc.rhs_source = OperandSource::Immediate;
     auipc.writes_rd = true;
     const IssueOutputs auipc_outputs =
-        issue.evaluate(make_available_inputs(auipc));
+        issue.plan(make_available_inputs(auipc));
     expect_ready_operand(auipc_outputs.rs_entry.lhs, 0x1000U);
     expect_ready_operand(auipc_outputs.rs_entry.rhs, 0x2000U);
 
@@ -202,7 +202,7 @@ void test_operand_sources_and_zero_register() {
     x0_inputs.rs1.producer = make_tag(9U);
     x0_inputs.rs1.producer_ready = false;
     x0_inputs.rs1.architectural_value = 0xdeadbeefU;
-    const IssueOutputs x0_outputs = issue.evaluate(x0_inputs);
+    const IssueOutputs x0_outputs = issue.plan(x0_inputs);
     expect_ready_operand(x0_outputs.rs_entry.lhs, 0U);
 }
 
@@ -213,28 +213,28 @@ void test_register_dependency_resolution() {
     IssueInputs waiting = make_available_inputs(make_add());
     waiting.rs1.producer = producer;
     waiting.rs1.producer_ready = false;
-    const IssueOutputs waiting_outputs = issue.evaluate(waiting);
+    const IssueOutputs waiting_outputs = issue.plan(waiting);
     expect_waiting_operand(waiting_outputs.rs_entry.lhs, producer);
 
     IssueInputs rob_ready = make_available_inputs(make_add());
     rob_ready.rs1.producer = producer;
     rob_ready.rs1.producer_ready = true;
     rob_ready.rs1.producer_value = 0x12345678U;
-    const IssueOutputs rob_ready_outputs = issue.evaluate(rob_ready);
+    const IssueOutputs rob_ready_outputs = issue.plan(rob_ready);
     expect_ready_operand(rob_ready_outputs.rs_entry.lhs, 0x12345678U);
 
     IssueInputs cdb_bypass = rob_ready;
     cdb_bypass.cdb.valid = true;
     cdb_bypass.cdb.tag = producer;
     cdb_bypass.cdb.value = 0xaabbccddU;
-    const IssueOutputs cdb_outputs = issue.evaluate(cdb_bypass);
+    const IssueOutputs cdb_outputs = issue.plan(cdb_bypass);
     expect_ready_operand(cdb_outputs.rs_entry.lhs, 0xaabbccddU);
 
     IssueInputs unrelated_cdb = waiting;
     unrelated_cdb.cdb.valid = true;
     unrelated_cdb.cdb.tag = make_tag(8U, 4U);
     unrelated_cdb.cdb.value = 99U;
-    const IssueOutputs unrelated_outputs = issue.evaluate(unrelated_cdb);
+    const IssueOutputs unrelated_outputs = issue.plan(unrelated_cdb);
     expect_waiting_operand(unrelated_outputs.rs_entry.lhs, producer);
 }
 
@@ -254,7 +254,7 @@ void test_load_and_store_issue_to_lsq() {
     IssueInputs load_inputs = make_available_inputs(load);
     load_inputs.rs1.architectural_value = 0x2000U;
 
-    const IssueOutputs load_outputs = issue.evaluate(load_inputs);
+    const IssueOutputs load_outputs = issue.plan(load_inputs);
     EXPECT_TRUE(load_outputs.issued());
     EXPECT_TRUE(load_outputs.write_rob);
     EXPECT_TRUE(load_outputs.write_lsq);
@@ -287,7 +287,7 @@ void test_load_and_store_issue_to_lsq() {
     store_inputs.rs1.architectural_value = 0x3000U;
     store_inputs.rs2.architectural_value = 0x55667788U;
 
-    const IssueOutputs store_outputs = issue.evaluate(store_inputs);
+    const IssueOutputs store_outputs = issue.plan(store_inputs);
     EXPECT_TRUE(store_outputs.issued());
     EXPECT_TRUE(store_outputs.write_rob);
     EXPECT_TRUE(store_outputs.write_lsq);
@@ -312,7 +312,7 @@ void test_branch_metadata_and_halt() {
     branch.uses_rs2 = true;
     branch.is_branch = true;
     const IssueOutputs branch_outputs =
-        issue.evaluate(make_available_inputs(branch));
+        issue.plan(make_available_inputs(branch));
     EXPECT_TRUE(branch_outputs.write_rs);
     EXPECT_TRUE(branch_outputs.rob_entry.is_branch);
     EXPECT_FALSE(branch_outputs.rob_entry.is_jump);
@@ -329,7 +329,7 @@ void test_branch_metadata_and_halt() {
     jump.writes_rd = true;
     jump.is_jump = true;
     const IssueOutputs jump_outputs =
-        issue.evaluate(make_available_inputs(jump));
+        issue.plan(make_available_inputs(jump));
     EXPECT_TRUE(jump_outputs.write_rs);
     EXPECT_FALSE(jump_outputs.rob_entry.is_branch);
     EXPECT_TRUE(jump_outputs.rob_entry.is_jump);
@@ -340,7 +340,7 @@ void test_branch_metadata_and_halt() {
     IssueInputs halt_inputs = make_available_inputs(halt);
     halt_inputs.rs_available = false;
     halt_inputs.lsq_available = false;
-    const IssueOutputs halt_outputs = issue.evaluate(halt_inputs);
+    const IssueOutputs halt_outputs = issue.plan(halt_inputs);
     EXPECT_TRUE(halt_outputs.issued());
     EXPECT_TRUE(halt_outputs.pop_decode);
     EXPECT_TRUE(halt_outputs.write_rob);
@@ -360,7 +360,7 @@ void test_x0_is_never_a_rename_destination() {
     decoded.writes_rd = true;
 
     const IssueOutputs outputs =
-        issue.evaluate(make_available_inputs(decoded));
+        issue.plan(make_available_inputs(decoded));
 
     EXPECT_TRUE(outputs.issued());
     EXPECT_FALSE(outputs.rob_entry.writes_rd);

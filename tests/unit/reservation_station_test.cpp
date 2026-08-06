@@ -58,6 +58,13 @@ RSInputs issue_input(const RSEntry& entry) {
     return inputs;
 }
 
+RSOutputs plan_and_apply(ReservationStation& station, const RSInputs& inputs) {
+    const RSDecision decision = station.plan(inputs.flush);
+    RSOutputs outputs = decision.outputs;
+    outputs.issue_accepted = station.apply(inputs, decision);
+    return outputs;
+}
+
 void expect_tag(RobTag actual, RobTag expected) {
     EXPECT_EQ(actual.index, expected.index);
     EXPECT_EQ(actual.generation, expected.generation);
@@ -81,7 +88,7 @@ void insert_entry(
     ReservationStation& station,
     const RSEntry& entry
 ) {
-    const RSOutputs outputs = station.evaluate(issue_input(entry));
+    const RSOutputs outputs = plan_and_apply(station, issue_input(entry));
     EXPECT_TRUE(outputs.issue_accepted);
     station.latch();
 }
@@ -99,7 +106,7 @@ void test_issue_is_visible_only_after_latch() {
     ReservationStation station;
     const RSEntry entry = make_entry(make_tag(1U, 2U));
 
-    const RSOutputs outputs = station.evaluate(issue_input(entry));
+    const RSOutputs outputs = plan_and_apply(station, issue_input(entry));
 
     EXPECT_TRUE(outputs.issue_accepted);
     EXPECT_FALSE(outputs.dispatch_valid);
@@ -119,7 +126,7 @@ void test_invalid_issue_does_not_allocate_slot() {
     inputs.issue_entry = make_entry(make_tag(2U));
     inputs.issue_valid = false;
 
-    const RSOutputs outputs = station.evaluate(inputs);
+    const RSOutputs outputs = plan_and_apply(station, inputs);
     station.latch();
 
     EXPECT_FALSE(outputs.issue_accepted);
@@ -146,7 +153,7 @@ void test_capacity_and_backpressure() {
     EXPECT_FALSE(station.available());
     EXPECT_EQ(station.size(), ReservationStation::kCapacity);
 
-    const RSOutputs rejected = station.evaluate(
+    const RSOutputs rejected = plan_and_apply(station,
         issue_input(make_entry(make_tag(99U)))
     );
     station.latch();
@@ -168,7 +175,7 @@ void test_ready_entry_uses_fu_valid_ready_handshake() {
 
     RSInputs stalled{};
     stalled.fu_available = false;
-    const RSOutputs stalled_outputs = station.evaluate(stalled);
+    const RSOutputs stalled_outputs = plan_and_apply(station, stalled);
 
     EXPECT_TRUE(stalled_outputs.dispatch_valid);
     expect_execute_matches(stalled_outputs.dispatch, entry);
@@ -178,7 +185,7 @@ void test_ready_entry_uses_fu_valid_ready_handshake() {
 
     RSInputs accepted{};
     accepted.fu_available = true;
-    const RSOutputs accepted_outputs = station.evaluate(accepted);
+    const RSOutputs accepted_outputs = plan_and_apply(station, accepted);
 
     EXPECT_TRUE(accepted_outputs.dispatch_valid);
     expect_execute_matches(accepted_outputs.dispatch, entry);
@@ -200,7 +207,7 @@ void test_unready_entry_is_not_dispatched() {
 
     RSInputs inputs{};
     inputs.fu_available = true;
-    const RSOutputs outputs = station.evaluate(inputs);
+    const RSOutputs outputs = plan_and_apply(station, inputs);
     station.latch();
 
     EXPECT_FALSE(outputs.dispatch_valid);
@@ -222,7 +229,7 @@ void test_cdb_wakeup_takes_effect_next_cycle() {
     RSInputs wake{};
     wake.cdb = CDBMsg{producer, 0xaabbccddU, true};
     wake.fu_available = true;
-    const RSOutputs wake_outputs = station.evaluate(wake);
+    const RSOutputs wake_outputs = plan_and_apply(station, wake);
 
     EXPECT_FALSE(wake_outputs.dispatch_valid);
 
@@ -230,7 +237,7 @@ void test_cdb_wakeup_takes_effect_next_cycle() {
 
     RSInputs dispatch{};
     dispatch.fu_available = true;
-    const RSOutputs dispatch_outputs = station.evaluate(dispatch);
+    const RSOutputs dispatch_outputs = plan_and_apply(station, dispatch);
 
     EXPECT_TRUE(dispatch_outputs.dispatch_valid);
     RSEntry expected = entry;
@@ -258,14 +265,14 @@ void test_cdb_requires_full_tag_match() {
         CDBMsg{make_tag(22U, 7U), 0xdeadbeefU, true};
     stale_broadcast.fu_available = true;
     const RSOutputs stale_outputs =
-        station.evaluate(stale_broadcast);
+        plan_and_apply(station, stale_broadcast);
     station.latch();
 
     EXPECT_FALSE(stale_outputs.dispatch_valid);
 
     RSInputs next_cycle{};
     next_cycle.fu_available = true;
-    const RSOutputs next_outputs = station.evaluate(next_cycle);
+    const RSOutputs next_outputs = plan_and_apply(station, next_cycle);
     station.latch();
 
     EXPECT_FALSE(next_outputs.dispatch_valid);
@@ -284,7 +291,7 @@ void test_dispatch_and_issue_can_share_a_cycle() {
 
     RSInputs inputs = issue_input(arriving);
     inputs.fu_available = true;
-    const RSOutputs outputs = station.evaluate(inputs);
+    const RSOutputs outputs = plan_and_apply(station, inputs);
 
     EXPECT_TRUE(outputs.dispatch_valid);
     expect_execute_matches(outputs.dispatch, departing);
@@ -296,7 +303,7 @@ void test_dispatch_and_issue_can_share_a_cycle() {
 
     RSInputs no_dispatch{};
     no_dispatch.fu_available = true;
-    const RSOutputs next_outputs = station.evaluate(no_dispatch);
+    const RSOutputs next_outputs = plan_and_apply(station, no_dispatch);
     station.latch();
 
     EXPECT_FALSE(next_outputs.dispatch_valid);
@@ -312,7 +319,7 @@ void test_round_robin_does_not_immediately_reuse_low_slot() {
 
     RSInputs dispatch_first{};
     dispatch_first.fu_available = true;
-    const RSOutputs first_outputs = station.evaluate(dispatch_first);
+    const RSOutputs first_outputs = plan_and_apply(station, dispatch_first);
     expect_execute_matches(first_outputs.dispatch, first);
     station.latch();
 
@@ -321,7 +328,7 @@ void test_round_robin_does_not_immediately_reuse_low_slot() {
 
     RSInputs dispatch_second{};
     dispatch_second.fu_available = true;
-    const RSOutputs second_outputs = station.evaluate(dispatch_second);
+    const RSOutputs second_outputs = plan_and_apply(station, dispatch_second);
 
     EXPECT_TRUE(second_outputs.dispatch_valid);
     expect_execute_matches(second_outputs.dispatch, second);
@@ -347,7 +354,7 @@ void test_flush_suppresses_actions_and_clears_station() {
     flush.issue_entry = make_entry(make_tag(52U));
     flush.cdb = CDBMsg{make_tag(60U), 99U, true};
 
-    const RSOutputs outputs = station.evaluate(flush);
+    const RSOutputs outputs = plan_and_apply(station, flush);
 
     EXPECT_FALSE(outputs.dispatch_valid);
     EXPECT_FALSE(outputs.issue_accepted);
@@ -363,7 +370,7 @@ void test_reset_clears_current_and_pending_state() {
     ReservationStation station;
     insert_entry(station, make_entry(make_tag(70U)));
 
-    station.evaluate(issue_input(make_entry(make_tag(71U))));
+    plan_and_apply(station, issue_input(make_entry(make_tag(71U))));
     station.reset();
     station.latch();
 

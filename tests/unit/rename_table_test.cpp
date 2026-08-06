@@ -51,7 +51,7 @@ void issue_and_latch(
     RegisterIndex rd,
     RobTag tag
 ) {
-    table.evaluate_updates(make_issue(rd, tag), RATCommit{}, false);
+    table.apply(make_issue(rd, tag), RATCommit{}, false);
     table.latch();
 }
 
@@ -69,7 +69,7 @@ void test_issue_mapping_is_visible_only_after_latch() {
     RenameTable table;
     const RobTag producer = make_tag(3U, 7U);
 
-    table.evaluate_updates(
+    table.apply(
         make_issue(5U, producer),
         RATCommit{},
         false
@@ -86,7 +86,7 @@ void test_issue_mapping_is_visible_only_after_latch() {
 void test_invalid_issue_updates_are_ignored() {
     RenameTable table;
 
-    table.evaluate_updates(
+    table.apply(
         make_issue(4U, make_tag(1U), false),
         RATCommit{},
         false
@@ -94,7 +94,7 @@ void test_invalid_issue_updates_are_ignored() {
     table.latch();
     expect_unmapped(table, RegisterIndex{4U});
 
-    table.evaluate_updates(
+    table.apply(
         make_issue(4U, RobTag{}, true),
         RATCommit{},
         false
@@ -102,7 +102,7 @@ void test_invalid_issue_updates_are_ignored() {
     table.latch();
     expect_unmapped(table, RegisterIndex{4U});
 
-    table.evaluate_updates(
+    table.apply(
         make_issue(0U, make_tag(2U), true),
         RATCommit{},
         false
@@ -110,7 +110,7 @@ void test_invalid_issue_updates_are_ignored() {
     table.latch();
     expect_unmapped(table, RegisterIndex{0U});
 
-    table.evaluate_updates(
+    table.apply(
         make_issue(32U, make_tag(3U), true),
         RATCommit{},
         false
@@ -124,7 +124,7 @@ void test_matching_commit_clears_mapping_after_latch() {
     const RobTag producer = make_tag(6U, 2U);
     issue_and_latch(table, 9U, producer);
 
-    table.evaluate_updates(
+    table.apply(
         RATWrite{},
         make_commit(9U, producer),
         false
@@ -143,7 +143,7 @@ void test_stale_commit_does_not_clear_younger_mapping() {
     const RobTag stale_generation = make_tag(4U, 7U);
     issue_and_latch(table, 10U, younger);
 
-    table.evaluate_updates(
+    table.apply(
         RATWrite{},
         make_commit(10U, stale_generation),
         false
@@ -159,7 +159,7 @@ void test_invalid_commit_is_ignored() {
     const RobTag producer = make_tag(7U, 3U);
     issue_and_latch(table, 11U, producer);
 
-    table.evaluate_updates(
+    table.apply(
         RATWrite{},
         make_commit(11U, producer, false),
         false
@@ -167,7 +167,7 @@ void test_invalid_commit_is_ignored() {
     table.latch();
     expect_tag(table.lookup(11U), producer);
 
-    table.evaluate_updates(
+    table.apply(
         RATWrite{},
         make_commit(11U, RobTag{}, true),
         false
@@ -182,7 +182,7 @@ void test_issue_wins_over_same_cycle_commit() {
     const RobTag younger = make_tag(2U, 1U);
     issue_and_latch(table, 12U, older);
 
-    table.evaluate_updates(
+    table.apply(
         make_issue(12U, younger),
         make_commit(12U, older),
         false
@@ -200,7 +200,7 @@ void test_updates_preserve_unrelated_mappings() {
     issue_and_latch(table, 13U, first);
     issue_and_latch(table, 14U, second);
 
-    table.evaluate_updates(
+    table.apply(
         RATWrite{},
         make_commit(13U, first),
         false
@@ -218,7 +218,7 @@ void test_flush_has_highest_priority_and_clears_all_mappings() {
     issue_and_latch(table, 15U, first);
     issue_and_latch(table, 16U, second);
 
-    table.evaluate_updates(
+    table.apply(
         make_issue(17U, make_tag(12U, 2U)),
         make_commit(15U, first),
         true
@@ -238,7 +238,7 @@ void test_reset_clears_current_and_pending_state() {
     RenameTable table;
     issue_and_latch(table, 18U, make_tag(13U, 4U));
 
-    table.evaluate_updates(
+    table.apply(
         make_issue(19U, make_tag(14U, 4U)),
         RATCommit{},
         false
