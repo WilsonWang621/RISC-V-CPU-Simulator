@@ -58,6 +58,26 @@ struct LSQOutputs {
     bool memory_error = false;
 };
 
+// plan() 只需要这些由 current state 产生的观察信号；Issue 与 CDB
+// wakeup 在所有模块输出冻结后由 apply() 吸收。
+struct LSQObserveInputs {
+    StoreCommitRequest store_request{};
+    DataMemoryResponse memory_response{};
+    bool memory_available = false;
+    bool load_result_granted = false;
+    bool flush = false;
+};
+
+struct LSQDecision {
+    LSQOutputs outputs{};
+
+    FUResult completed_load_result{};
+    bool clear_load_result = false;
+    bool install_load_result = false;
+    bool remove_head = false;
+    bool mark_request_sent = false;
+};
+
 
 class LoadStoreQueue{
 public:
@@ -75,6 +95,10 @@ public:
     // 当前已经完成、等待 CDB 的 Load 结果。
     FUResult load_result() const;
 
+    LSQDecision plan(const LSQObserveInputs& inputs) const;
+    bool apply(const LSQInputs& inputs, const LSQDecision& decision);
+
+    // 兼容独立模块测试；等价于 plan() + apply()。
     LSQOutputs evaluate(const LSQInputs& inputs);
 
     const std::array<LSQEntry, LoadStoreQueue::kCapacity>& entries() const;
@@ -97,10 +121,10 @@ private:
     void wake_operand(Operand& operand, const CDBMsg& cdb);
     void wake_entry(LSQEntry& entry, const CDBMsg& cdb);
 
-    bool matching_response(const LSQEntry& entry, const DataMemoryResponse& response);
+    bool matching_response(const LSQEntry& entry, const DataMemoryResponse& response) const;
 
     static MemoryWidth memory_width(OP op);
-    Word extend_load_result(OP op, Word raw_value);
+    static Word extend_load_result(OP op, Word raw_value);
 
     void update_addresses();
 

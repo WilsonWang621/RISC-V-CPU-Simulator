@@ -2,7 +2,65 @@
 #include "common/config.hpp"
 #include "isa/decoder.hpp"
 
+#include <algorithm>
+#include <array>
 #include <cassert>
+
+namespace {
+
+enum class PlanModule {
+    Issue,
+    ReorderBuffer,
+    ReservationStation,
+    LoadStoreQueue
+};
+
+enum class ApplyModule {
+    CommonDataBus,
+    ReorderBuffer,
+    ReservationStation,
+    LoadStoreQueue,
+    FunctionalUnit,
+    RegisterFile,
+    RenameTable,
+    BranchPredictor,
+    MemoryUnit
+};
+
+enum class LatchModule {
+    RegisterFile,
+    RenameTable,
+    ReorderBuffer,
+    ReservationStation,
+    LoadStoreQueue,
+    FunctionalUnit,
+    CommonDataBus,
+    MemoryUnit,
+    BranchPredictor
+};
+
+}
+
+CPU::CPU(std::uint32_t random_seed)
+    : random_engine_(random_seed) {
+    initialize_execution_orders();
+}
+
+void CPU::initialize_execution_orders() {
+    constexpr PlanOrder base_plan{{0U, 1U, 2U, 3U}};
+    constexpr ApplyOrder base_apply{{0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U}};
+    constexpr LatchOrder base_latch{{0U, 1U, 2U, 3U, 4U, 5U, 6U, 7U, 8U}};
+
+    for (std::size_t index = 0U; index < kOrderVariantCount; ++index) {
+        plan_orders_[index] = base_plan;
+        apply_orders_[index] = base_apply;
+        latch_orders_[index] = base_latch;
+
+        std::shuffle(plan_orders_[index].begin(), plan_orders_[index].end(), random_engine_);
+        std::shuffle(apply_orders_[index].begin(), apply_orders_[index].end(), random_engine_);
+        std::shuffle(latch_orders_[index].begin(), latch_orders_[index].end(), random_engine_);
+    }
+}
 
 ImageLoadResult CPU::load(std::istream &input){
     //所有成员变量初始化
@@ -165,59 +223,79 @@ void CPU::cycle(){
 
     next_pc_ = current_pc_;
     next_fetch_stopped_ = fetch_stopped_;
-    /*
-    * 1. 预览 ROB 当前队首
-    * Flush 和 Store 授权都只依赖 ROB 当前状态。
-    */
+
+    // Phase A: 只观察 current state，冻结本周期的组合 wire。
     const ROBPreview rob_preview = preview_rob();
 
-    /*
-    * 2. CDB 仲裁当前完成结果。
-    * FU 和 LSQ 的 result() 都读取当前状态。
-    */
-    CDBInputs cdb_inputs;
+    CDBInputs cdb_inputs{};
     if(!rob_preview.flush){
         cdb_inputs.integer_result = functional_unit_.result();
         cdb_inputs.load_result = load_store_queue_.load_result();
     }
 
-    const CDBOutputs cdb_outputs = common_data_bus_.evaluate(cdb_inputs);
+    const CDBDecision cdb_decision = common_data_bus_.plan(cdb_inputs);
+    const CDBOutputs& cdb_outputs = cdb_decision.outputs;
 
-    /*
-    * 3. Fetch、Decode、Issue。
-    * ROB 满时所有指令都无法发射，因此直接 Stall，
-    * 同时避免当前 IssueUnit 把无效 next_tag 误判成错误。
-    */
+    LSQObserveInputs lsq_observe{};
+    lsq_observe.store_request = rob_preview.store_request;
+    lsq_observe.memory_response = memory_unit_.data_response();
+    lsq_observe.memory_available = memory_unit_.data_port_available();
+    lsq_observe.load_result_granted = cdb_outputs.load_granted;
+    lsq_observe.flush = rob_preview.flush;
+
+    // Phase B: plan() 只读 current state/CycleView。四个模块的输出
+    // 互不依赖调用顺序，可以每周期随机打乱。
     IssueOutputs issue_outputs{};
+    ROBDecision rob_decision{};
+    RSDecision rs_decision{};
+    LSQDecision lsq_decision{};
     bool fetch_error = false;
 
-    if(!rob_preview.flush && !fetch_stopped_ && !rob_.full()){
-       const DecodePacket packet = fetchAndDecoded(fetch_error);
-       if(!fetch_error){
-          IssueInputs issue_inputs{};
-          issue_inputs.packet = packet;
-          issue_inputs.allocated_tag = rob_.next_tag();
-          issue_inputs.cdb = cdb_outputs.broadcast;
-          issue_inputs.lsq_available = !load_store_queue_.full();
-          issue_inputs.rob_available = !rob_.full();
-          issue_inputs.rs1 = source_state(packet.decoded.rs1);
-          issue_inputs.rs2 = source_state(packet.decoded.rs2);
-          issue_inputs.rs_available = reservation_station_.available();
+    const std::size_t order_index = static_cast<std::size_t>(cycle_count_ % kOrderVariantCount);
+    const PlanOrder& plan_order = plan_orders_[order_index];
 
-          issue_outputs = issue_unit_.evaluate(issue_inputs);
-       }
+    for (const std::uint8_t raw_module : plan_order) {
+        const PlanModule module = static_cast<PlanModule>(raw_module);
+        switch (module) {
+            case PlanModule::Issue: {
+                if(!rob_preview.flush && !fetch_stopped_ && !rob_.full()){
+                    const DecodePacket packet = fetchAndDecoded(fetch_error);
+                    if(!fetch_error){
+                        IssueInputs issue_inputs{};
+                        issue_inputs.packet = packet;
+                        issue_inputs.allocated_tag = rob_.next_tag();
+                        issue_inputs.cdb = cdb_outputs.broadcast;
+                        issue_inputs.lsq_available = !load_store_queue_.full();
+                        issue_inputs.rob_available = !rob_.full();
+                        issue_inputs.rs1 = source_state(packet.decoded.rs1);
+                        issue_inputs.rs2 = source_state(packet.decoded.rs2);
+                        issue_inputs.rs_available = reservation_station_.available();
+
+                        issue_outputs = issue_unit_.evaluate(issue_inputs);
+                    }
+                }
+                break;
+            }
+            case PlanModule::ReorderBuffer:
+                rob_decision = rob_.plan();
+                break;
+            case PlanModule::ReservationStation:
+                rs_decision = reservation_station_.plan(rob_preview.flush);
+                break;
+            case PlanModule::LoadStoreQueue:
+                lsq_decision = load_store_queue_.plan(lsq_observe);
+                break;
+        }
     }
 
-    /*
-    * 4. LSQ evaluate
-    * 它需要：
-    *   - 当前 Memory Response；
-    *   - 当前 CDB；
-    *   - ROB 当前 Store 授权；
-    *   - CDB 是否接收 Load Result。
-    */
+    // 从这里开始所有模块输出已经冻结。
+    ROBOutputs rob_outputs = rob_decision.outputs;
+    RSOutputs rs_outputs = rs_decision.outputs;
+    LSQOutputs lsq_outputs = lsq_decision.outputs;
 
-    LSQInputs lsq_inputs;
+    const bool issue_effective = issue_outputs.issued() && !rob_outputs.flush;
+
+    LSQInputs lsq_inputs{};
 
     lsq_inputs.issue_valid = issue_outputs.write_lsq && !rob_preview.flush;
     lsq_inputs.issue_entry = issue_outputs.lsq_entry;
@@ -228,33 +306,14 @@ void CPU::cycle(){
     lsq_inputs.memory_response = memory_unit_.data_response();
     lsq_inputs.store_request = rob_preview.store_request;
 
-    const LSQOutputs lsq_outputs = load_store_queue_.evaluate(lsq_inputs);
-
-    /*
-     * 5. ROB evaluate。
-     * LSQ 本周期产生的 Store Completion 可以进入 ROB next 状态。
-     */
-    ROBInputs rob_inputs;
+    ROBInputs rob_inputs{};
 
     rob_inputs.issue_valid = issue_outputs.write_rob && !rob_preview.flush;
     rob_inputs.issue_entry = issue_outputs.rob_entry;
     rob_inputs.completion = cdb_outputs.completion;
     rob_inputs.store_completion = lsq_outputs.store_completion;
 
-    const ROBOutputs rob_outputs = rob_.evaluate(rob_inputs);
-
-    /*
-     * 6. 确定本周期 Issue 是否真正生效。
-     */
-    const bool issue_effective = issue_outputs.issued() && !rob_outputs.flush;
-
     if (issue_effective) {
-        assert(rob_outputs.issue_accepted);
-
-        if (issue_outputs.write_lsq) {
-            assert(lsq_outputs.issue_accepted);
-        }
-
         next_pc_ = issue_outputs.rob_entry.predicted_next_pc;
 
         if (issue_outputs.rob_entry.op == OP::HALT) {
@@ -270,12 +329,7 @@ void CPU::cycle(){
         next_fetch_stopped_ = false;
     }
 
-    /*
-     * 7. RS evaluate。
-     *
-     * FU 当前结果若获得 CDB 仲裁，本周期可以同时接收新指令。
-     */
-    RSInputs rs_inputs;
+    RSInputs rs_inputs{};
 
     rs_inputs.cdb = cdb_outputs.broadcast;
     rs_inputs.flush = rob_preview.flush;
@@ -283,28 +337,8 @@ void CPU::cycle(){
     rs_inputs.issue_entry = issue_outputs.rs_entry;
     rs_inputs.issue_valid = issue_outputs.write_rs && issue_effective;
 
-    const RSOutputs rs_outputs = reservation_station_.evaluate(rs_inputs);
-
-    /*
-    * 8. FU evaluate。
-    */
-    
     const Execute execute = rs_outputs.dispatch;
-    const bool fu_accepted = functional_unit_.evaluate(execute, rob_preview.flush, cdb_outputs.integer_granted);
-
-
-    if (
-        rs_outputs.dispatch_valid
-        && rs_inputs.fu_available
-        && !rob_preview.flush
-    ) {
-        assert(fu_accepted);
-    }
-
-    /*
-     * 9. Register File Commit。
-     */
-    RegisterWrite register_write;
+    RegisterWrite register_write{};
     
     if(rob_outputs.commit.valid && rob_outputs.commit.entry.writes_rd && rob_outputs.commit.valid){
         register_write.rd = rob_outputs.commit.entry.rd;
@@ -312,12 +346,7 @@ void CPU::cycle(){
         register_write.valid = true;
     }
 
-    register_file_.evaluate_commit(register_write);
-
-    /*
-     * 10. RAT：Commit 清除 + Issue 写入 + Flush。
-     */
-    RATWrite rat_write;
+    RATWrite rat_write{};
 
     if(issue_outputs.rename.valid && issue_effective){
         rat_write.rd = issue_outputs.rename.rd;
@@ -325,7 +354,7 @@ void CPU::cycle(){
         rat_write.valid = true;
     }
 
-    RATCommit rat_commit;
+    RATCommit rat_commit{};
 
     if(rob_outputs.commit.valid && rob_outputs.commit.entry.writes_rd){
         rat_commit.rd = rob_outputs.commit.entry.rd;
@@ -333,12 +362,7 @@ void CPU::cycle(){
         rat_commit.valid = true;
     }
 
-    rename_table_.evaluate_updates(rat_write, rat_commit, rob_outputs.flush);
-
-    /*
-     * 11. Branch Predictor Commit 更新。
-     */
-    BranchPredictorUpdate predictor_update;
+    BranchPredictorUpdate predictor_update{};
 
     if (rob_outputs.commit.valid &&
         rob_outputs.commit.entry.is_branch) {
@@ -351,20 +375,67 @@ void CPU::cycle(){
         predictor_update.valid = true;
     }
 
-    branch_predictor_.evaluate(predictor_update);
+    // Phase C: 所有 apply 输入已经冻结。每个调用只写自己的 next
+    // state，因此执行顺序可以随机交换。
+    bool rob_issue_accepted = false;
+    bool rs_issue_accepted = false;
+    bool lsq_issue_accepted = false;
+    bool fu_accepted = false;
+    bool memory_accepted = false;
 
-    /*
-    * 12. Memory Unit 推进数据事务。
-    */
+    const ApplyOrder& apply_order = apply_orders_[order_index];
 
-    const bool memory_accepted = memory_unit_.evaluate(lsq_outputs.memory_request);
+    for (const std::uint8_t raw_module : apply_order) {
+        const ApplyModule module = static_cast<ApplyModule>(raw_module);
+        switch (module) {
+            case ApplyModule::CommonDataBus:
+                common_data_bus_.apply(cdb_decision);
+                break;
+            case ApplyModule::ReorderBuffer:
+                rob_issue_accepted = rob_.apply(rob_inputs, rob_decision);
+                break;
+            case ApplyModule::ReservationStation:
+                rs_issue_accepted = reservation_station_.apply(rs_inputs, rs_decision);
+                break;
+            case ApplyModule::LoadStoreQueue:
+                lsq_issue_accepted = load_store_queue_.apply(lsq_inputs, lsq_decision);
+                break;
+            case ApplyModule::FunctionalUnit:
+                fu_accepted = functional_unit_.evaluate(execute, rob_preview.flush, cdb_outputs.integer_granted);
+                break;
+            case ApplyModule::RegisterFile:
+                register_file_.evaluate_commit(register_write);
+                break;
+            case ApplyModule::RenameTable:
+                rename_table_.evaluate_updates(rat_write, rat_commit, rob_outputs.flush);
+                break;
+            case ApplyModule::BranchPredictor:
+                branch_predictor_.evaluate(predictor_update);
+                break;
+            case ApplyModule::MemoryUnit:
+                memory_accepted = memory_unit_.evaluate(lsq_outputs.memory_request);
+                break;
+        }
+    }
+
+    if (issue_effective) {
+        assert(rob_issue_accepted);
+        if (issue_outputs.write_rs) {
+            assert(rs_issue_accepted);
+        }
+        if (issue_outputs.write_lsq) {
+            assert(lsq_issue_accepted);
+        }
+    }
+
+    if (rs_outputs.dispatch_valid && rs_inputs.fu_available && !rob_preview.flush) {
+        assert(fu_accepted);
+    }
+
     if(lsq_outputs.memory_request.valid){
         assert(memory_accepted);
     }
 
-    /*
-     * 13. 统计和状态。
-     */
     Status next_status = status_;
 
     if (rob_outputs.commit.valid && rob_outputs.commit.entry.op != OP::HALT) {
@@ -378,10 +449,7 @@ void CPU::cycle(){
         next_status = Status::FetchOutOfBound;
     }
 
-    if (
-        issue_outputs.status == IssueStatus::InvalidInstruction
-        && rob_.empty()
-    ) {
+    if (issue_outputs.status == IssueStatus::InvalidInstruction && rob_.empty()) {
         next_status = Status::InvalidInstruction;
     }
 
@@ -404,9 +472,7 @@ void CPU::cycle(){
         next_status = Status::Halted;
     }
 
-    /*
-     * 14. 周期末统一锁存。
-     */
+    // Phase D: 所有 next state 已经完成，latch 顺序同样随机。
     latch_all();
 
     current_pc_ = next_pc_;
@@ -416,33 +482,50 @@ void CPU::cycle(){
 
 CPU::RunResult CPU::run() {
     if (status_ != Status::Running) {
-        return RunResult{
-            status_,
-            exit_code_
-        };
+        return RunResult{status_, exit_code_};
     }
 
     while (status_ == Status::Running) {
         cycle();
     }
 
-    return RunResult{
-        status_,
-        exit_code_
-    };
+    return RunResult{status_, exit_code_};
 }
 
 void CPU::latch_all() {
-    register_file_.latch();
-    rename_table_.latch();
+    const std::size_t order_index = static_cast<std::size_t>(cycle_count_ % kOrderVariantCount);
+    const LatchOrder& latch_order = latch_orders_[order_index];
 
-    rob_.latch();
-    reservation_station_.latch();
-    load_store_queue_.latch();
-
-    functional_unit_.latch();
-    common_data_bus_.latch();
-
-    memory_unit_.latch();
-    branch_predictor_.latch();
+    for (const std::uint8_t raw_module : latch_order) {
+        const LatchModule module = static_cast<LatchModule>(raw_module);
+        switch (module) {
+            case LatchModule::RegisterFile:
+                register_file_.latch();
+                break;
+            case LatchModule::RenameTable:
+                rename_table_.latch();
+                break;
+            case LatchModule::ReorderBuffer:
+                rob_.latch();
+                break;
+            case LatchModule::ReservationStation:
+                reservation_station_.latch();
+                break;
+            case LatchModule::LoadStoreQueue:
+                load_store_queue_.latch();
+                break;
+            case LatchModule::FunctionalUnit:
+                functional_unit_.latch();
+                break;
+            case LatchModule::CommonDataBus:
+                common_data_bus_.latch();
+                break;
+            case LatchModule::MemoryUnit:
+                memory_unit_.latch();
+                break;
+            case LatchModule::BranchPredictor:
+                branch_predictor_.latch();
+                break;
+        }
+    }
 }

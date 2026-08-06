@@ -47,10 +47,9 @@ bool ReservationStation::available() const{
     return !full();
 }
 
-std::size_t ReservationStation::select_ready_index(){
+std::size_t ReservationStation::select_ready_index() const{
     for(size_t offset = 0u; offset < ReservationStation::kCapacity; offset++){
-        const size_t index =
-            (dispatch_cursor_ + offset) % ReservationStation::kCapacity;
+        const size_t index = (dispatch_cursor_ + offset) % kCapacity;
         const RSEntry& entry = cur_rs_[index];
         if(entry.busy && entry.lhs.ready && entry.rhs.ready){
             return index;
@@ -108,9 +107,28 @@ std::size_t ReservationStation::find_free_index(
 }
 
 
-RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
-    RSOutputs outputs{};
+RSDecision ReservationStation::plan(bool flush) const{
+    RSDecision decision{};
+    if (flush) {
+        return decision;
+    }
+    // 必须从 cur_rs_ 中选择 ready 指令。
+    // 本周期被 CDB 唤醒的指令写入 next_，
+    // 最早在下一周期才能被派发
+    const size_t selected = select_ready_index();
+    if(selected != ReservationStation::kInvalidIndex){
+        decision.outputs.dispatch = make_execute(cur_rs_[selected]);
+        decision.outputs.dispatch_valid = true;
+        decision.selected_index = selected;
+    }
 
+    return decision;
+}
+
+bool ReservationStation::apply(
+    const RSInputs& inputs,
+    const RSDecision& decision
+){
     // 默认保持当前完整状态
     next_dispatch_cursor_ = dispatch_cursor_;
     next_rs_ = cur_rs_;
@@ -118,16 +136,7 @@ RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
     if(inputs.flush){
         next_dispatch_cursor_ = 0u;
         next_rs_.fill(RSEntry{});
-        return outputs;
-    }
-
-    // 必须从 cur_rs_ 中选择 ready 指令。
-    // 本周期被 CDB 唤醒的指令写入 next_，
-    // 最早在下一周期才能被派发
-    const size_t selected = select_ready_index();
-    if(selected != ReservationStation::kInvalidIndex){
-        outputs.dispatch = make_execute(cur_rs_[selected]);
-        outputs.dispatch_valid = true;
+        return false;
     }
     
     //CDB唤醒所有条目
@@ -136,12 +145,15 @@ RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
     }
 
     //只有FU真正接收，才可以释放槽位！！
-    if(selected != ReservationStation::kInvalidIndex && inputs.fu_available){
-        next_rs_[selected] = RSEntry{};
-        next_dispatch_cursor_ =
-            (selected + 1) % ReservationStation::kCapacity;
+    if(
+        decision.selected_index != ReservationStation::kInvalidIndex
+        && inputs.fu_available
+    ){
+        next_rs_[decision.selected_index] = RSEntry{};
+        next_dispatch_cursor_ = (decision.selected_index + 1) % ReservationStation::kCapacity;
     }
 
+    bool issue_accepted = false;
     if(inputs.issue_valid){
         RSEntry new_entry = inputs.issue_entry;
          
@@ -150,8 +162,16 @@ RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
         if(free_slot != ReservationStation::kInvalidIndex){
             new_entry.busy = true;
             next_rs_[free_slot] = new_entry;
-            outputs.issue_accepted = true;
+            issue_accepted = true;
         }
     }
+
+    return issue_accepted;
+}
+
+RSOutputs ReservationStation::evaluate(const RSInputs& inputs){
+    const RSDecision decision = plan(inputs.flush);
+    RSOutputs outputs = decision.outputs;
+    outputs.issue_accepted = apply(inputs, decision);
     return outputs;
 }

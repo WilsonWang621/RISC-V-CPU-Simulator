@@ -29,10 +29,21 @@ struct CDBOutputs{
     bool load_granted = false;
 };
 
+// 本周期仲裁的完整、不可变决策。plan() 只读取 current state；
+// apply() 在所有模块输出都冻结后再提交 next state。
+struct CDBDecision {
+    CDBOutputs outputs{};
+    bool next_prefer_load = false;
+};
+
 class CommonDataBus{
 public:
     CommonDataBus();
 
+    CDBDecision plan(const CDBInputs& inputs) const;
+    void apply(const CDBDecision& decision);
+
+    // 兼容单元测试与独立模块使用；等价于 plan() + apply()。
     CDBOutputs evaluate(const CDBInputs& inputs);
 
     void reset();

@@ -79,9 +79,40 @@ const ROBEntry* ReorderBuffer::lookup(RobTag tag) const{
 
 }
 
-ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
-    ROBOutputs outputs{};
+ROBDecision ReorderBuffer::plan() const{
+    ROBDecision decision{};
+    ROBOutputs& outputs = decision.outputs;
+    const ROBEntry* head_entry = front();
 
+    //ROB 队首是一个尚未完成内存写入的 Store，通知 LSQ：这条 Store 已经获得顺序提交授权，可以尝试写内存
+    if(head_entry != nullptr && head_entry->is_store && !head_entry->ready){
+        outputs.store_request.valid = true;
+        outputs.store_request.tag = head_entry->tag;
+    }
+
+    if(head_entry != nullptr && head_entry->ready){
+        outputs.commit.entry = *head_entry;
+        outputs.commit.valid = true;
+        outputs.commit.halted = head_entry->op == OP::HALT;
+
+        if(is_control_instruction(*head_entry)){
+            outputs.commit.mispredicted = head_entry->predicted_next_pc != head_entry->actual_next_pc;
+            outputs.commit.redirect_pc = head_entry->actual_next_pc;
+        }
+
+        if (outputs.commit.mispredicted) {
+            outputs.flush = true;
+            outputs.redirect_pc = head_entry->actual_next_pc;
+        }
+    }
+
+    return decision;
+}
+
+bool ReorderBuffer::apply(
+    const ROBInputs& inputs,
+    const ROBDecision& decision
+){
     next_ = cur_;
     next_generations_ = generations_;
 
@@ -94,39 +125,15 @@ ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
     apply_completion(inputs.completion);
     apply_store_completion(inputs.store_completion);
 
-    const ROBEntry* head_entry = front();
-    //ROB 队首是一个尚未完成内存写入的 Store，通知 LSQ：这条 Store 已经获得顺序提交授权，可以尝试写内存
-    if(head_entry != nullptr && head_entry->is_store && !head_entry->ready){
-        outputs.store_request.valid = true;
-        outputs.store_request.tag = head_entry->tag;
-    }
-
-    bool commit_caused_flush = false;
-
-    if(head_entry != nullptr && head_entry->ready){
-        outputs.commit.entry = *head_entry;
-        outputs.commit.valid = true;
-        outputs.commit.halted = head_entry->op == OP::HALT;
-
-        if(is_control_instruction(*head_entry)){
-            outputs.commit.mispredicted = head_entry->predicted_next_pc != head_entry->actual_next_pc;
-            outputs.commit.redirect_pc = head_entry->actual_next_pc;
-        }
-
+    if (decision.outputs.commit.valid) {
         const size_t old_head = next_head_;
-        const size_t new_head =
-            (old_head + 1U) % ReorderBuffer::kCapacity;
+        const size_t new_head = (old_head + 1U) % ReorderBuffer::kCapacity;
 
         next_[old_head] = ROBEntry{};
         next_head_ = new_head;
-        next_count_--;
+        --next_count_;
 
-        if (outputs.commit.mispredicted) {
-            outputs.flush = true;
-            outputs.redirect_pc = head_entry->actual_next_pc;
-
-            commit_caused_flush = true;
-
+        if (decision.outputs.flush) {
             // 控制指令本身已经提交，其余全部是年轻指令。
             clear_speculative_entries(new_head);
         }
@@ -134,7 +141,8 @@ ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
 
     // Flush 优先级高于同周期 Issue。
     // Issue Unit 即使已经生成了 entry，也必须整体作废
-    if (!commit_caused_flush && inputs.issue_valid) {
+    bool issue_accepted = false;
+    if (!decision.outputs.flush && inputs.issue_valid) {
         // 资源判断使用 current_，保持模块时序一致。
         // 当前周期 ROB 是满的，即使同时提交一项，也暂时不允许发射（先完成保守但简单的实现）
         if (!full()) {
@@ -148,15 +156,21 @@ ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
 
                 next_[next_tail_] = entry;
                 next_generations_[next_tail_] = expected_tag.generation;
-                next_tail_ =
-                    (next_tail_ + 1U) % ReorderBuffer::kCapacity;
+                next_tail_ = (next_tail_ + 1U) % ReorderBuffer::kCapacity;
 
                 ++next_count_;
-                outputs.issue_accepted = true;
+                issue_accepted = true;
             }
         }
     }
 
+    return issue_accepted;
+}
+
+ROBOutputs ReorderBuffer::evaluate(const ROBInputs &inputs){
+    const ROBDecision decision = plan();
+    ROBOutputs outputs = decision.outputs;
+    outputs.issue_accepted = apply(inputs, decision);
     return outputs;
 }
 

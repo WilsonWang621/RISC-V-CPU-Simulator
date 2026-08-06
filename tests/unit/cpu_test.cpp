@@ -1,4 +1,6 @@
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <iomanip>
 #include <initializer_list>
@@ -402,6 +404,59 @@ void test_reload_resets_architectural_and_statistical_state() {
     expect_halted_with(cpu, Word{7});
 }
 
+struct ExecutionSnapshot {
+    CPU::Status status = CPU::Status::NotLoaded;
+    Word value = 0;
+    CycleCount cycles = 0;
+    CycleCount committed = 0;
+    CycleCount branches = 0;
+    CycleCount correct_branches = 0;
+    std::array<Word, 32> registers{};
+};
+
+ExecutionSnapshot run_order_independence_program(std::uint32_t seed) {
+    CPU cpu(seed);
+    const ImageLoadResult loaded = load_program(cpu, {addi(1U, 0U, 0x100), addi(2U, 0U, 0x5a), sw(2U, 1U, 0), lw(3U, 1U, 0), beq(3U, 2U, 8), addi(10U, 0U, 99), add(10U, 3U, 2U), kHalt});
+    EXPECT_TRUE(loaded.ok());
+
+    const CPU::RunResult result = run_bounded(cpu);
+    ExecutionSnapshot snapshot{};
+    snapshot.status = result.status;
+    snapshot.value = result.value;
+    snapshot.cycles = cpu.cycle_count();
+    snapshot.committed = cpu.committed_count();
+    snapshot.branches = cpu.branch_count();
+    snapshot.correct_branches = cpu.correct_branch_count();
+
+    for (std::size_t index = 0U; index < snapshot.registers.size(); ++index) {
+        snapshot.registers[index] = cpu.register_value(static_cast<RegisterIndex>(index));
+    }
+    return snapshot;
+}
+
+void test_random_module_orders_are_cycle_identical() {
+    const ExecutionSnapshot baseline = run_order_independence_program(0U);
+    EXPECT_EQ(baseline.status, CPU::Status::Halted);
+    EXPECT_EQ(baseline.value, Word{0xb4U});
+    EXPECT_EQ(baseline.branches, CycleCount{1});
+    EXPECT_EQ(baseline.correct_branches, CycleCount{0});
+
+    for (std::uint32_t seed = 1U; seed <= 100U; ++seed) {
+        const ExecutionSnapshot actual = run_order_independence_program(seed);
+
+        EXPECT_EQ(actual.status, baseline.status);
+        EXPECT_EQ(actual.value, baseline.value);
+        EXPECT_EQ(actual.cycles, baseline.cycles);
+        EXPECT_EQ(actual.committed, baseline.committed);
+        EXPECT_EQ(actual.branches, baseline.branches);
+        EXPECT_EQ(actual.correct_branches, baseline.correct_branches);
+
+        for (std::size_t index = 0U; index < actual.registers.size(); ++index) {
+            EXPECT_EQ(actual.registers[index], baseline.registers[index]);
+        }
+    }
+}
+
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -430,6 +485,7 @@ int main(int argc, char* argv[]) {
         {"memory", test_store_then_load_round_trip},
         {"invalid", test_invalid_instruction_stops_cpu},
         {"reload", test_reload_resets_architectural_and_statistical_state},
+        {"random-order", test_random_module_orders_are_cycle_identical},
     };
 
     const std::string_view filter = argc > 1 ? argv[1] : "";

@@ -47,6 +47,8 @@ struct RSOutputs{
     bool issue_accepted = false;
 };
 
+struct RSDecision;
+
 class ReservationStation{
 public:
     static constexpr std::size_t kCapacity = 16U;
@@ -64,6 +66,10 @@ public:
     // Issue Unit 在发射前用它检查资源。
     bool available() const;
 
+    RSDecision plan(bool flush = false) const;
+    bool apply(const RSInputs& inputs, const RSDecision& decision);
+
+    // 兼容独立模块测试；等价于 plan() + apply()。
     RSOutputs evaluate(const RSInputs& inputs);
 
 
@@ -80,9 +86,14 @@ private:
     static void wake_operand(Operand& operand, const CDBMsg& cdb); // make operand ready
     static void wake_entry(RSEntry& entry, const CDBMsg& cdb); //use wake_operand to make entry ready
 
-    std::size_t select_ready_index();
+    std::size_t select_ready_index() const;
 
     std::size_t find_free_index(const std::array<RSEntry, kCapacity>& entries);
 
-    Execute make_execute(const RSEntry &entry);
+    static Execute make_execute(const RSEntry &entry);
+};
+
+struct RSDecision {
+    RSOutputs outputs{};
+    std::size_t selected_index = ReservationStation::kCapacity;
 };

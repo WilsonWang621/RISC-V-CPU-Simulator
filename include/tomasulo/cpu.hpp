@@ -1,6 +1,9 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
 #include <istream>
+#include <random>
 #include "common/types.hpp"
 #include "memory/memory_unit.hpp"
 #include "tomasulo/branch_predictor.hpp"
@@ -40,7 +43,7 @@ public:
         }
     };
 
-    CPU() = default;
+    explicit CPU(std::uint32_t random_seed = 0U);
 
     ImageLoadResult load(std::istream& input);
 
@@ -93,6 +96,19 @@ private:
     CycleCount committed_count_ = 0;
 
     Word exit_code_ = 0;
+
+    std::mt19937 random_engine_{};
+
+    static constexpr std::size_t kOrderVariantCount = 64U;
+    using PlanOrder = std::array<std::uint8_t, 4>;
+    using ApplyOrder = std::array<std::uint8_t, 9>;
+    using LatchOrder = std::array<std::uint8_t, 9>;
+
+    std::array<PlanOrder, kOrderVariantCount> plan_orders_{};
+    std::array<ApplyOrder, kOrderVariantCount> apply_orders_{};
+    std::array<LatchOrder, kOrderVariantCount> latch_orders_{};
+
+    void initialize_execution_orders();
 
     SourceState source_state(RegisterIndex reg) const;
 

@@ -75,6 +75,12 @@ struct ROBOutputs{
     Address redirect_pc = 0;
 };
 
+// ROB 对 current head 的只读决策。Issue/CDB/Store completion 等本周期
+// 输入只在 apply() 阶段吸收，不能反过来影响本周期提交。
+struct ROBDecision {
+    ROBOutputs outputs{};
+};
+
 struct ReorderBuffer{
 public:
     static constexpr size_t kCapacity = 32u;
@@ -94,6 +100,10 @@ public:
     const ROBEntry* front() const;
     const ROBEntry* lookup(RobTag tag) const;
 
+    ROBDecision plan() const;
+    bool apply(const ROBInputs& inputs, const ROBDecision& decision);
+
+    // 兼容独立模块测试；等价于 plan() + apply()。
     ROBOutputs evaluate(const ROBInputs& inputs);
 
     const std::array<ROBEntry, kCapacity>& entries() const;
